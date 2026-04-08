@@ -1,0 +1,110 @@
+#Requires -Version 7.2
+<#
+.SYNOPSIS
+    Bootstraps the build toolchain using ModuleFast.
+
+.DESCRIPTION
+    Reads build/build.requires.psd1, merges the selected scopes into a flat
+    spec, and hands it to ModuleFast for installation.
+
+    NOTE: This script requires PowerShell 7.2+ because ModuleFast does.
+    The module itself targets 5.1 at runtime, but building and testing
+    always requires 7.2 or later.
+
+    The requirements file groups modules by purpose (Build, Test, Docs, or
+    any custom name).  Pass -Scope to install specific groups, or omit it
+    to install everything.
+
+.PARAMETER Scope
+    One or more dependency group names to install.  Names must match keys in
+    build.requires.psd1.  When omitted, all groups are installed.
+
+.PARAMETER Update
+    Forces ModuleFast to re-check for newer versions of installed modules.
+
+.PARAMETER Plan
+    Shows what would be installed without installing anything.
+
+.EXAMPLE
+    ./build/bootstrap.ps1                        # everything
+    ./build/bootstrap.ps1 -Scope Build,Test      # just build + test
+    ./build/bootstrap.ps1 -Scope Build -Plan     # dry run
+#>
+[CmdletBinding()]
+param(
+    [string[]]$Scope,
+
+    [switch]$Update,
+
+    [switch]$Plan
+)
+
+$ErrorActionPreference = 'Stop'
+
+# Bootstrap ModuleFast
+if (-not (Get-Module -ListAvailable -Name ModuleFast -ErrorAction SilentlyContinue)) {
+    Write-Host '[bootstrap] Installing ModuleFast ...' -ForegroundColor Cyan
+    Invoke-WebRequest -Uri 'bit.ly/modulefast' -UseBasicParsing | Invoke-Expression
+}
+else {
+    Import-Module ModuleFast -ErrorAction Stop
+}
+
+# Load requirements
+$RequiresPath = Join-Path -Path $PSScriptRoot -ChildPath 'build.requires.psd1'
+if (-not (Test-Path -Path $RequiresPath)) {
+    throw "Requirements file not found: $RequiresPath"
+}
+
+$AllGroups = Import-PowerShellDataFile -Path $RequiresPath
+
+# Resolve scopes
+if ($Scope) {
+    $Invalid = $Scope | Where-Object { $_ -notin $AllGroups.Keys }
+    if ($Invalid) {
+        $Available = $AllGroups.Keys -join ', '
+        throw "Unknown scope(s): $($Invalid -join ', '). Available: $Available"
+    }
+    $SelectedGroups = $Scope
+}
+else {
+    $SelectedGroups = @($AllGroups.Keys)
+}
+
+# Merge into flat ModuleFast spec
+$Merged = @{}
+foreach ($Group in $SelectedGroups) {
+    $GroupData = $AllGroups[$Group]
+    if ($GroupData -is [hashtable]) {
+        foreach ($Key in $GroupData.Keys) {
+            $Merged[$Key] = $GroupData[$Key]
+        }
+    }
+}
+
+if ($Merged.Count -eq 0) {
+    Write-Host '[bootstrap] Nothing to install for the selected scope(s).' -ForegroundColor Yellow
+    return
+}
+
+# Report
+$ScopeLabel = $SelectedGroups -join ', '
+Write-Host "[bootstrap] Scopes: $ScopeLabel ($($Merged.Count) modules)" -ForegroundColor Cyan
+
+foreach ($Mod in $Merged.GetEnumerator() | Sort-Object Key) {
+    Write-Host "  $($Mod.Key) = $($Mod.Value)" -ForegroundColor DarkGray
+}
+
+# Install
+$Specs = $Merged.GetEnumerator() | ForEach-Object { "$($_.Key)=$($_.Value)" }
+
+$Params = @{ Specification = $Specs }
+if ($Update) { $Params['Update'] = $true }
+
+if ($Plan) {
+    Install-ModuleFast @Params -Plan
+}
+else {
+    Install-ModuleFast @Params
+    Write-Host '[bootstrap] Done.' -ForegroundColor Green
+}

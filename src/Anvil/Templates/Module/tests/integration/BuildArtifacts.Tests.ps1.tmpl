@@ -1,0 +1,62 @@
+#Requires -Modules @{ ModuleName = 'Pester'; ModuleVersion = '5.0.0' }
+
+BeforeAll {
+    $ProjectRoot  = Split-Path -Path $PSScriptRoot -Parent | Split-Path -Parent
+    $ModuleName   = '<%ModuleName%>'
+    $ArtifactsDir = Join-Path -Path $ProjectRoot -ChildPath 'artifacts'
+    $PackageDir   = Join-Path -Path $ArtifactsDir -ChildPath 'package'
+    $ArchiveDir   = Join-Path -Path $ArtifactsDir -ChildPath 'archive'
+    $StagedModule = Join-Path -Path $PackageDir -ChildPath $ModuleName
+    $StagedPsm1   = Join-Path -Path $StagedModule -ChildPath "$ModuleName.psm1"
+    $StagedPsd1   = Join-Path -Path $StagedModule -ChildPath "$ModuleName.psd1"
+}
+
+Describe 'Build Artifacts' -Tag 'Integration' {
+
+    Context 'Directory structure' {
+        It 'artifacts directory exists'    { $ArtifactsDir | Should -Exist }
+        It 'staged module exists'          { $StagedModule | Should -Exist }
+        It 'archive directory exists'      { $ArchiveDir   | Should -Exist }
+    }
+
+    Context 'Staged module' {
+        It 'contains the manifest (.psd1)' {
+            $StagedPsd1 | Should -Exist
+        }
+        It 'contains the module file (.psm1)' {
+            $StagedPsm1 | Should -Exist
+        }
+        It 'staged manifest is valid' {
+            { Test-ModuleManifest -Path $StagedPsd1 -ErrorAction Stop } | Should -Not -Throw
+        }
+    }
+
+    Context 'Compiled module' {
+        It '.psm1 is a compiled single file (no dot-sourcing)' {
+            $Content = Get-Content -Path $StagedPsm1 -Raw
+            $Content | Should -Not -Match '\.\s+\$.*\.FullName'
+            $Content | Should -Not -Match 'Get-ChildItem.*-Filter.*\*\.ps1'
+        }
+        It '.psm1 contains Export-ModuleMember' {
+            $Content = Get-Content -Path $StagedPsm1 -Raw
+            $Content | Should -Match 'Export-ModuleMember'
+        }
+        It 'staged module can be imported' {
+            { Import-Module $StagedPsd1 -Force -ErrorAction Stop } | Should -Not -Throw
+        }
+    }
+
+    Context 'Archive' {
+        It 'contains at least one .zip' {
+            Get-ChildItem -Path $ArchiveDir -Filter '*.zip' | Should -Not -BeNullOrEmpty
+        }
+        It 'archive is non-empty' {
+            $Z = Get-ChildItem -Path $ArchiveDir -Filter '*.zip' | Select-Object -First 1
+            $Z.Length | Should -BeGreaterThan 0
+        }
+    }
+}
+
+AfterAll {
+    Get-Module -Name '<%ModuleName%>' -ErrorAction SilentlyContinue | Remove-Module -Force
+}

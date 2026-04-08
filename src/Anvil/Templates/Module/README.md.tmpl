@@ -1,0 +1,54 @@
+# <%ModuleName%>
+
+<%Description%>
+
+## Quick start
+
+```powershell
+git clone <your-repo-url>
+cd <%ModuleName%>
+./build/bootstrap.ps1
+Invoke-Build -File ./build/module.build.ps1
+```
+
+## Project layout
+
+```
+<%ModuleName%>/
+├── src/<%ModuleName%>/        Module source
+│   ├── <%ModuleName%>.psd1    Manifest (runtime deps only)
+│   ├── <%ModuleName%>.psm1    Entry point
+│   ├── Public/                Exported functions
+│   └── Private/               Internal helpers
+├── build/
+│   ├── module.build.ps1       InvokeBuild task graph
+│   ├── bootstrap.ps1          Dependency installer
+│   └── build.requires.psd1    Pinned tool versions (ModuleFast)
+├── tests/
+│   ├── unit/                  Pester 5 unit tests
+│   └── integration/           Post-build artifact tests
+└── docs/                      Generated help (platyPS)
+```
+
+## Build tasks
+
+| Task              | Description                                            |
+|-------------------|--------------------------------------------------------|
+| `.` (default)     | Clean → Validate → Lint → Test → Docs → Package       |
+| `Lint`            | PSScriptAnalyzer with project settings                 |
+| `Test`            | Pester 5 unit tests + code coverage                    |
+| `IntegrationTest` | Post-build artifact validation                         |
+| `Docs`            | platyPS markdown and XML help generation               |
+| `Package`         | Stage module + create archive                          |
+| `Release`         | Full pipeline + publish to PSGallery                   |
+
+## Adding a command
+
+1. Create `src/<%ModuleName%>/Public/Verb-Noun.ps1`
+2. Add the function name to `FunctionsToExport` in the manifest
+3. Create `tests/unit/Verb-Noun.Tests.ps1`
+4. Run `Invoke-Build -File ./build/module.build.ps1 -Task Lint, Test`
+
+## License
+
+See [LICENSE](LICENSE) for details.

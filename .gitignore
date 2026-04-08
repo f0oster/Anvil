@@ -1,0 +1,12 @@
+artifacts/
+*.zip
+*.nupkg
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/extensions.json
+coverage.xml
+.DS_Store
+Thumbs.db
+*.secret
+.env

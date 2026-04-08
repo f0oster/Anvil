@@ -1,0 +1,66 @@
+#Requires -Modules @{ ModuleName = 'Pester'; ModuleVersion = '5.0.0' }
+
+BeforeDiscovery {
+    $ProjectRoot  = Split-Path -Path $PSScriptRoot -Parent | Split-Path -Parent
+    $ModuleName   = '<%ModuleName%>'
+    $ModuleDir    = Join-Path -Path $ProjectRoot -ChildPath 'src' | Join-Path -ChildPath $ModuleName
+    $ManifestPath = Join-Path -Path $ModuleDir -ChildPath "$ModuleName.psd1"
+
+    $ManifestData      = Import-PowerShellDataFile -Path $ManifestPath
+    $DeclaredFunctions = $ManifestData.FunctionsToExport
+}
+
+BeforeAll {
+    $ProjectRoot  = Split-Path -Path $PSScriptRoot -Parent | Split-Path -Parent
+    $ModuleName   = '<%ModuleName%>'
+    $ModuleDir    = Join-Path -Path $ProjectRoot -ChildPath 'src' | Join-Path -ChildPath $ModuleName
+    $ManifestPath = Join-Path -Path $ModuleDir -ChildPath "$ModuleName.psd1"
+
+    Get-Module -Name $ModuleName -ErrorAction SilentlyContinue | Remove-Module -Force
+    Import-Module $ManifestPath -Force -ErrorAction Stop
+}
+
+AfterAll {
+    Get-Module -Name '<%ModuleName%>' -ErrorAction SilentlyContinue | Remove-Module -Force
+}
+
+Describe 'Module: <%ModuleName%>' -Tag 'Unit' {
+
+    Context 'Manifest' {
+        It 'has a valid manifest' {
+            { Test-ModuleManifest -Path $ManifestPath -ErrorAction Stop } | Should -Not -Throw
+        }
+
+        It 'has a non-empty description' {
+            $M = Test-ModuleManifest -Path $ManifestPath -ErrorAction Stop
+            $M.Description | Should -Not -BeNullOrEmpty
+        }
+
+        It 'targets PowerShell <%MinPowerShellVersion%> or later' {
+            $M = Test-ModuleManifest -Path $ManifestPath -ErrorAction Stop
+            $M.PowerShellVersion | Should -BeGreaterOrEqual ([Version]'<%MinPowerShellVersion%>')
+        }
+    }
+
+    Context 'Import' {
+        It 'imports without errors' {
+            { Import-Module $ManifestPath -Force -ErrorAction Stop } | Should -Not -Throw
+        }
+
+        It 'is loaded after import' {
+            Get-Module -Name '<%ModuleName%>' | Should -Not -BeNullOrEmpty
+        }
+    }
+
+    Context 'Exports' {
+        It 'exports the expected number of functions' {
+            $Exported = (Get-Module -Name '<%ModuleName%>').ExportedFunctions.Keys
+            $Exported.Count | Should -Be $DeclaredFunctions.Count
+        }
+
+        It 'exports <_>' -ForEach $DeclaredFunctions {
+            $Exported = (Get-Module -Name '<%ModuleName%>').ExportedFunctions.Keys
+            $_ | Should -BeIn $Exported
+        }
+    }
+}

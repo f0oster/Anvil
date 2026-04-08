@@ -1,0 +1,58 @@
+# Release Pipeline — <%ModuleName%>
+# Triggered by version tags (v*).
+# Setup: add PSGALLERY_API_KEY as a repository secret.
+
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: read
+
+jobs:
+  ci:
+    name: CI Gate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@<CHECKOUT_SHA>
+      - name: Bootstrap
+        shell: pwsh
+        run: ./build/bootstrap.ps1
+      - name: Full build
+        shell: pwsh
+        run: Invoke-Build -File ./build/module.build.ps1
+      - uses: actions/upload-artifact@<UPLOAD_SHA>
+        with:
+          name: release-package
+          path: ./artifacts/package/
+          if-no-files-found: error
+
+  publish:
+    name: Publish to PSGallery
+    needs: ci
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@<CHECKOUT_SHA>
+      - uses: actions/download-artifact@<DOWNLOAD_SHA>
+        with:
+          name: release-package
+          path: ./artifacts/package/
+      - name: Validate tag matches manifest
+        shell: pwsh
+        run: |
+          $tag = "${{ github.ref_name }}" -replace '^v', ''
+          $mp = Join-Path -Path './artifacts/package/<%ModuleName%>' -ChildPath '<%ModuleName%>.psd1'
+          $m = Test-ModuleManifest -Path $mp -ErrorAction Stop
+          if ($m.Version.ToString() -ne $tag) {
+              throw "Tag ($tag) != manifest ($($m.Version)). Update the manifest first."
+          }
+      - name: Publish
+        shell: pwsh
+        env:
+          PSGALLERY_API_KEY: ${{ secrets.PSGALLERY_API_KEY }}
+        run: |
+          $mp = Join-Path -Path './artifacts/package' -ChildPath '<%ModuleName%>'
+          Publish-Module -Path $mp -NuGetApiKey $env:PSGALLERY_API_KEY -ErrorAction Stop

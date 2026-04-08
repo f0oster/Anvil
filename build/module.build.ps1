@@ -1,0 +1,291 @@
+#Requires -Version 5.1
+<#
+.SYNOPSIS
+    InvokeBuild build script for Anvil.
+
+.DESCRIPTION
+    Task graph:
+        . (default)  ->  Clean, Validate, Lint, Test, Docs, Build, IntegrationTest, Package
+        Release      ->  . + Publish
+        DevCC        ->  generate Coverage Gutters output for VS Code
+
+    Invoke with:
+        Invoke-Build                                    # full default pipeline
+        Invoke-Build -Task Lint                         # single task
+        Invoke-Build -Task Release                      # full + publish
+        Invoke-Build -Task DevCC                        # local coverage for VS Code
+        Invoke-Build -Task Version -NewVersion 1.2.0    # bump version
+#>
+param(
+    [string]$NewVersion
+)
+
+# Settings (user-editable in build.settings.psd1)
+$script:Settings       = Import-PowerShellDataFile -Path (Join-Path -Path $PSScriptRoot -ChildPath 'build.settings.psd1')
+$script:ModuleName     = $script:Settings.ModuleName
+$script:CoverageThreshold = $script:Settings.CoverageThreshold
+
+# Project paths
+$script:ProjectRoot    = Split-Path -Path $BuildFile -Parent | Split-Path -Parent
+$script:SrcDir         = Join-Path -Path $script:ProjectRoot -ChildPath 'src'
+$script:ModuleDir      = Join-Path -Path $script:SrcDir      -ChildPath $script:ModuleName
+$script:ManifestPath   = Join-Path -Path $script:ModuleDir   -ChildPath "$($script:ModuleName).psd1"
+$script:ModuleFilePath = Join-Path -Path $script:ModuleDir   -ChildPath "$($script:ModuleName).psm1"
+$script:TestsDir       = Join-Path -Path $script:ProjectRoot -ChildPath 'tests'
+$script:UnitTestDir    = Join-Path -Path $script:TestsDir    -ChildPath 'unit'
+$script:IntTestDir     = Join-Path -Path $script:TestsDir    -ChildPath 'integration'
+$script:DocsDir        = Join-Path -Path $script:ProjectRoot -ChildPath 'docs'
+$script:ArtifactsDir   = Join-Path -Path $script:ProjectRoot -ChildPath 'artifacts'
+$script:PackageDir     = Join-Path -Path $script:ArtifactsDir -ChildPath 'package'
+$script:TestResultsDir = Join-Path -Path $script:ArtifactsDir -ChildPath 'testResults'
+$script:ArchiveDir     = Join-Path -Path $script:ArtifactsDir -ChildPath 'archive'
+
+# Helpers
+function Write-BuildHeader ([string]$Message) {
+    $D = '=' * 72
+    Write-Build Cyan "`n$D`n  $Message`n$D`n"
+}
+
+function Write-BuildFooter ([string]$Message) {
+    Write-Build Green "  [ok] $Message`n"
+}
+
+function Assert-FileExists ([string]$Path, [string]$Description) {
+    if (-not (Test-Path -Path $Path)) { throw "$Description not found: $Path" }
+}
+
+# Tasks
+
+task Clean {
+    Write-BuildHeader 'Clean'
+    if (Test-Path -Path $script:ArtifactsDir) {
+        Remove-Item -Path $script:ArtifactsDir -Recurse -Force
+    }
+    @($script:ArtifactsDir, $script:PackageDir, $script:TestResultsDir, $script:ArchiveDir) | ForEach-Object {
+        New-Item -Path $_ -ItemType Directory -Force | Out-Null
+    }
+    Write-BuildFooter 'Clean complete'
+}
+
+task Validate {
+    Write-BuildHeader 'Validate'
+    Write-Build White "  PowerShell $($PSVersionTable.PSVersion)"
+    Assert-FileExists -Path $script:ManifestPath -Description 'Module manifest'
+    $Manifest = Test-ModuleManifest -Path $script:ManifestPath -ErrorAction Stop
+    Write-Build White "  Manifest OK — $($Manifest.Name) v$($Manifest.Version)"
+    Assert-FileExists -Path $script:ModuleFilePath -Description 'Module .psm1'
+    Write-BuildFooter 'Validation complete'
+}
+
+task Lint {
+    Write-BuildHeader 'Lint (PSScriptAnalyzer)'
+    $Params = @{
+        Path     = $script:ModuleDir
+        Recurse  = $true
+        Severity = @('Error', 'Warning')
+    }
+    $SettingsPath = Join-Path -Path $script:ProjectRoot -ChildPath 'PSScriptAnalyzerSettings.psd1'
+    if (Test-Path -Path $SettingsPath) { $Params['Settings'] = $SettingsPath }
+    $Results = Invoke-ScriptAnalyzer @Params
+    if ($Results) {
+        $Results | Format-Table -AutoSize
+        throw "PSScriptAnalyzer found $($Results.Count) issue(s)."
+    }
+    Write-BuildFooter 'No lint issues'
+}
+
+task Test {
+    Write-BuildHeader 'Unit Tests (Pester 5)'
+    Assert-FileExists -Path $script:UnitTestDir -Description 'Unit test directory'
+
+    $Cfg = New-PesterConfiguration
+    $Cfg.Run.Path                           = $script:UnitTestDir
+    $Cfg.Run.Exit                           = $true
+    $Cfg.Output.Verbosity                   = 'Detailed'
+    $Cfg.TestResult.Enabled                 = $true
+    $Cfg.TestResult.OutputFormat             = if ($env:PESTER_OUTPUT_FORMAT) { $env:PESTER_OUTPUT_FORMAT } else { 'NUnitXml' }
+    $Cfg.TestResult.OutputPath               = Join-Path -Path $script:TestResultsDir -ChildPath 'unit-results.xml'
+    $Cfg.CodeCoverage.Enabled               = $true
+    $Cfg.CodeCoverage.Path                  = @(
+        (Join-Path -Path $script:ModuleDir -ChildPath 'Public')
+        (Join-Path -Path $script:ModuleDir -ChildPath 'Private')
+    )
+    $Cfg.CodeCoverage.OutputFormat           = 'JaCoCo'
+    $Cfg.CodeCoverage.OutputPath             = Join-Path -Path $script:TestResultsDir -ChildPath 'coverage.xml'
+    $Cfg.CodeCoverage.CoveragePercentTarget  = $script:CoverageThreshold
+
+    Invoke-Pester -Configuration $Cfg
+    Write-BuildFooter 'Unit tests complete'
+}
+
+task Docs {
+    Write-BuildHeader 'Documentation (Microsoft.PowerShell.PlatyPS)'
+
+    $PlatyModule = 'Microsoft.PowerShell.PlatyPS'
+    if (-not (Get-Module -ListAvailable -Name $PlatyModule -ErrorAction SilentlyContinue)) {
+        Write-Build Yellow "  $PlatyModule not installed — skipping docs generation"
+        return
+    }
+    Import-Module $PlatyModule -ErrorAction Stop
+    Import-Module $script:ManifestPath -Force -ErrorAction Stop
+
+    $MdDir = Join-Path -Path $script:DocsDir -ChildPath 'cmdlets'
+    if (-not (Test-Path -Path $MdDir)) {
+        New-Item -Path $MdDir -ItemType Directory -Force | Out-Null
+    }
+
+    $ModInfo = Get-Module -Name $script:ModuleName
+    New-MarkdownCommandHelp -ModuleInfo $ModInfo -OutputFolder $MdDir -Force | Out-Null
+
+    # Export to MAML for Get-Help
+    $HelpDir = Join-Path -Path $script:ModuleDir -ChildPath 'en-US'
+    if (-not (Test-Path -Path $HelpDir)) {
+        New-Item -Path $HelpDir -ItemType Directory -Force | Out-Null
+    }
+
+    $MdFiles = Measure-PlatyPSMarkdown -Path (Join-Path -Path $MdDir -ChildPath '*.md')
+    $CmdHelp = $MdFiles |
+        Where-Object { $_.Filetype -match 'CommandHelp' } |
+        Import-MarkdownCommandHelp -Path { $_.FilePath }
+
+    if ($CmdHelp) {
+        $CmdHelp | Export-MamlCommandHelp -OutputFolder $HelpDir -Force | Out-Null
+    }
+
+    Write-BuildFooter 'Docs generation complete'
+}
+
+task Build {
+    Write-BuildHeader 'Build (compile module)'
+    $Staging = Join-Path -Path $script:PackageDir -ChildPath $script:ModuleName
+    if (Test-Path -Path $Staging) { Remove-Item -Path $Staging -Recurse -Force }
+    New-Item -Path $Staging -ItemType Directory -Force | Out-Null
+
+    Copy-Item -Path $script:ManifestPath -Destination $Staging
+    $EnUS = Join-Path -Path $script:ModuleDir -ChildPath 'en-US'
+    if (Test-Path -Path $EnUS) {
+        Copy-Item -Path $EnUS -Destination (Join-Path -Path $Staging -ChildPath 'en-US') -Recurse
+    }
+
+    # Copy Templates directory (scaffolder-specific asset)
+    $TemplatesDir = Join-Path -Path $script:ModuleDir -ChildPath 'Templates'
+    if (Test-Path -Path $TemplatesDir) {
+        Copy-Item -Path $TemplatesDir -Destination (Join-Path -Path $Staging -ChildPath 'Templates') -Recurse
+    }
+
+    # Merge .ps1 files into a single .psm1
+    $Sb = [System.Text.StringBuilder]::new()
+    $PrivatePath = Join-Path -Path $script:ModuleDir -ChildPath 'Private'
+    $PublicPath  = Join-Path -Path $script:ModuleDir -ChildPath 'Public'
+
+    foreach ($Dir in @($PrivatePath, $PublicPath)) {
+        if (Test-Path -Path $Dir) {
+            foreach ($File in (Get-ChildItem -Path $Dir -Filter '*.ps1' -Recurse | Sort-Object FullName)) {
+                [void]$Sb.AppendLine("# --- $($File.Name) ---")
+                [void]$Sb.AppendLine((Get-Content -Path $File.FullName -Raw))
+                [void]$Sb.AppendLine('')
+            }
+        }
+    }
+
+    # Append TemplateRoot variable (needed by scaffolding commands)
+    [void]$Sb.AppendLine('$script:TemplateRoot = Join-Path -Path $PSScriptRoot -ChildPath ''Templates''')
+    [void]$Sb.AppendLine('')
+
+    $PublicFunctions = @()
+    if (Test-Path -Path $PublicPath) {
+        $PublicFunctions = (Get-ChildItem -Path $PublicPath -Filter '*.ps1' -Recurse).BaseName | Sort-Object
+    }
+    if ($PublicFunctions.Count -gt 0) {
+        $Names = ($PublicFunctions | ForEach-Object { "'$_'" }) -join ', '
+        [void]$Sb.AppendLine("Export-ModuleMember -Function @($Names)")
+    }
+
+    $CompiledPsm1 = Join-Path -Path $Staging -ChildPath "$($script:ModuleName).psm1"
+    Set-Content -Path $CompiledPsm1 -Value $Sb.ToString() -NoNewline
+
+    Write-Build White "  Compiled $($PublicFunctions.Count) public + private functions into .psm1"
+    Write-BuildFooter 'Build complete'
+}
+
+task IntegrationTest {
+    Write-BuildHeader 'Integration Tests'
+    if (-not (Test-Path -Path $script:IntTestDir)) {
+        Write-Build Yellow '  No integration tests found — skipping'
+        return
+    }
+    $Cfg = New-PesterConfiguration
+    $Cfg.Run.Path                 = $script:IntTestDir
+    $Cfg.Run.Exit                 = $true
+    $Cfg.Output.Verbosity         = 'Detailed'
+    $Cfg.TestResult.Enabled       = $true
+    $Cfg.TestResult.OutputFormat   = 'NUnitXml'
+    $Cfg.TestResult.OutputPath     = Join-Path -Path $script:TestResultsDir -ChildPath 'integration-results.xml'
+    Invoke-Pester -Configuration $Cfg
+    Write-BuildFooter 'Integration tests complete'
+}
+
+task Package {
+    Write-BuildHeader 'Package'
+    $Staging = Join-Path -Path $script:PackageDir -ChildPath $script:ModuleName
+    Assert-FileExists -Path $Staging -Description 'Staged module (run Build first)'
+
+    $Manifest    = Test-ModuleManifest -Path (Join-Path -Path $Staging -ChildPath "$($script:ModuleName).psd1") -ErrorAction Stop
+    $ArchiveName = "$($script:ModuleName)-$($Manifest.Version).zip"
+    $ArchivePath = Join-Path -Path $script:ArchiveDir -ChildPath $ArchiveName
+    Compress-Archive -Path $Staging -DestinationPath $ArchivePath -Force
+
+    Write-Build White "  Archive: $ArchivePath"
+    Write-BuildFooter 'Packaging complete'
+}
+
+task Version {
+    Write-BuildHeader 'Version'
+    $Manifest = Test-ModuleManifest -Path $script:ManifestPath -ErrorAction Stop
+    Write-Build White "  Current: $($Manifest.Version)"
+
+    if ($NewVersion) {
+        Update-ModuleManifest -Path $script:ManifestPath -ModuleVersion $NewVersion
+        Write-Build Green "  Updated: $NewVersion"
+    }
+    else {
+        Write-Build DarkGray '  Pass -NewVersion to bump: Invoke-Build Version -NewVersion 1.2.0'
+    }
+    Write-BuildFooter 'Version task complete'
+}
+
+task Publish {
+    Write-BuildHeader 'Publish to PowerShell Gallery'
+    $ApiKey = $env:PSGALLERY_API_KEY
+    if (-not $ApiKey) { throw 'PSGALLERY_API_KEY not set.' }
+    $Staging = Join-Path -Path $script:PackageDir -ChildPath $script:ModuleName
+    Assert-FileExists -Path $Staging -Description 'Staged module'
+    Publish-Module -Path $Staging -NuGetApiKey $ApiKey -ErrorAction Stop
+    Write-BuildFooter 'Published'
+}
+
+task DevCC {
+    Write-BuildHeader 'Dev Code Coverage'
+    Assert-FileExists -Path $script:UnitTestDir -Description 'Unit test directory'
+
+    $Cfg = New-PesterConfiguration
+    $Cfg.Run.Path              = $script:UnitTestDir
+    $Cfg.Run.Exit              = $false
+    $Cfg.Output.Verbosity      = 'Normal'
+    $Cfg.CodeCoverage.Enabled  = $true
+    $Cfg.CodeCoverage.Path     = @(
+        (Join-Path -Path $script:ModuleDir -ChildPath 'Public')
+        (Join-Path -Path $script:ModuleDir -ChildPath 'Private')
+    )
+    $Cfg.CodeCoverage.OutputFormat = 'CoverageGutters'
+    $Cfg.CodeCoverage.OutputPath   = Join-Path -Path $script:ProjectRoot -ChildPath 'coverage.xml'
+
+    Invoke-Pester -Configuration $Cfg
+
+    Write-Build White "  Coverage file: $(Join-Path -Path $script:ProjectRoot -ChildPath 'coverage.xml')"
+    Write-BuildFooter 'Dev coverage complete — open Coverage Gutters in VS Code'
+}
+
+# Composite tasks
+task . Clean, Validate, Lint, Test, Docs, Build, IntegrationTest, Package
+task Release ., Publish

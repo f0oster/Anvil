@@ -1,0 +1,55 @@
+stages:
+  - lint
+  - test
+  - package
+
+variables:
+  PESTER_OUTPUT_FORMAT: JUnitXml
+
+.pwsh_template: &pwsh_defaults
+  image: mcr.microsoft.com/powershell:lts-ubuntu-22.04
+  before_script:
+    - pwsh -File ./build/bootstrap.ps1
+
+lint:
+  <<: *pwsh_defaults
+  stage: lint
+  before_script:
+    - pwsh -File ./build/bootstrap.ps1 -Scope Build
+  script:
+    - pwsh -Command "Invoke-Build -File ./build/module.build.ps1 -Task Lint"
+
+test:linux:
+  <<: *pwsh_defaults
+  stage: test
+  script:
+    - pwsh -Command "Invoke-Build -File ./build/module.build.ps1 -Task Test"
+  artifacts:
+    when: always
+    reports:
+      junit: artifacts/testResults/unit-results.xml
+    paths:
+      - artifacts/testResults/
+
+test:windows:
+  <<: *pwsh_defaults
+  stage: test
+  tags:
+    - windows
+  image: null
+  script:
+    - pwsh -Command "Invoke-Build -File ./build/module.build.ps1 -Task Test"
+  artifacts:
+    when: always
+    reports:
+      junit: artifacts/testResults/unit-results.xml
+
+package:
+  <<: *pwsh_defaults
+  stage: package
+  script:
+    - pwsh -Command "Invoke-Build -File ./build/module.build.ps1"
+  artifacts:
+    paths:
+      - artifacts/package/
+      - artifacts/archive/

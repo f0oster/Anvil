@@ -1,0 +1,76 @@
+# Release Pipeline — <%ModuleName%>
+# Triggered by version tags (v*).
+# Setup: add PSGALLERY_API_KEY as a pipeline variable (secret).
+
+trigger:
+  tags:
+    include:
+      - 'v*'
+
+pr: none
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+stages:
+  - stage: CI
+    displayName: 'CI Gate'
+    jobs:
+      - job: Build
+        steps:
+          - task: PowerShell@2
+            displayName: 'Bootstrap'
+            inputs:
+              targetType: filePath
+              filePath: ./build/bootstrap.ps1
+              pwsh: true
+          - task: PowerShell@2
+            displayName: 'Full build'
+            inputs:
+              targetType: inline
+              script: Invoke-Build -File ./build/module.build.ps1
+              pwsh: true
+          - task: PublishTestResults@2
+            displayName: 'Publish test results'
+            condition: always()
+            inputs:
+              testResultsFormat: NUnit
+              testResultsFiles: '**/unit-results.xml'
+              searchFolder: ./artifacts/testResults
+          - publish: ./artifacts/package
+            artifact: module-package
+
+  - stage: Publish
+    displayName: 'Publish to PSGallery'
+    dependsOn: CI
+    condition: succeeded()
+    jobs:
+      - deployment: PublishModule
+        displayName: 'Publish'
+        environment: production
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - download: current
+                  artifact: module-package
+                - task: PowerShell@2
+                  displayName: 'Validate tag matches manifest'
+                  inputs:
+                    targetType: inline
+                    pwsh: true
+                    script: |
+                      $tag = '$(Build.SourceBranchName)' -replace '^v', ''
+                      $mp = Join-Path -Path '$(Pipeline.Workspace)/module-package/<%ModuleName%>' -ChildPath '<%ModuleName%>.psd1'
+                      $m = Test-ModuleManifest -Path $mp -ErrorAction Stop
+                      if ($m.Version.ToString() -ne $tag) {
+                          throw "Tag ($tag) != manifest ($($m.Version)). Update the manifest first."
+                      }
+                - task: PowerShell@2
+                  displayName: 'Publish to PSGallery'
+                  inputs:
+                    targetType: inline
+                    pwsh: true
+                    script: |
+                      $mp = Join-Path -Path '$(Pipeline.Workspace)/module-package' -ChildPath '<%ModuleName%>'
+                      Publish-Module -Path $mp -NuGetApiKey '$(PSGALLERY_API_KEY)' -ErrorAction Stop
