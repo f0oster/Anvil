@@ -1,0 +1,18 @@
+function Format-GreetingText {
+    <#
+    .SYNOPSIS
+        Formats a greeting string.
+
+    .DESCRIPTION
+        Sample private function demonstrating the helper pattern.  Private
+        functions are dot-sourced at import time but not exported.
+    #>
+    [CmdletBinding()]
+    [OutputType([string])]
+    param(
+        [Parameter(Mandatory)]
+        [string]$Name
+    )
+
+    "Hello, $Name!"
+}

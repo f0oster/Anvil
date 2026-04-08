@@ -10,12 +10,13 @@
     PowerShellVersion      = '<%MinPowerShellVersion%>'
     CompatiblePSEditions   = @('Desktop', 'Core')
 
-    # Runtime dependencies ONLY — build/test tooling belongs in build/build.requires.psd1
+    # Runtime dependencies only -- build/test tooling belongs in build/build.requires.psd1
     # RequiredModules = @()
 
-    # TODO: Add your public function names here as you create them, e.g.:
-    # FunctionsToExport = @('Get-Widget', 'Set-Widget')
-    FunctionsToExport = @()
+    # Add your public function names here as you create them.
+    FunctionsToExport = @(
+        'Get-Greeting'
+    )
     CmdletsToExport   = @()
     VariablesToExport  = @()
     AliasesToExport    = @()

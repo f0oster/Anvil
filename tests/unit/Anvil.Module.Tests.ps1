@@ -1,23 +1,32 @@
 #Requires -Modules @{ ModuleName = 'Pester'; ModuleVersion = '5.0.0' }
 
 BeforeDiscovery {
-    $ProjectRoot  = Split-Path -Path $PSScriptRoot -Parent | Split-Path -Parent
+    $ProjectRoot = $PSScriptRoot
+    while ($ProjectRoot -and -not (Test-Path (Join-Path $ProjectRoot 'build/build.settings.psd1'))) {
+        $ProjectRoot = Split-Path $ProjectRoot -Parent
+    }
     $ModuleName   = 'Anvil'
     $ModuleDir    = Join-Path -Path $ProjectRoot -ChildPath 'src' | Join-Path -ChildPath $ModuleName
     $ManifestPath = Join-Path -Path $ModuleDir -ChildPath "$ModuleName.psd1"
 
     $ManifestData      = Import-PowerShellDataFile -Path $ManifestPath
-    $DeclaredFunctions = $ManifestData.FunctionsToExport
+    $DeclaredFunctions = @($ManifestData.FunctionsToExport)
 }
 
 BeforeAll {
-    $ProjectRoot  = Split-Path -Path $PSScriptRoot -Parent | Split-Path -Parent
+    $ProjectRoot = $PSScriptRoot
+    while ($ProjectRoot -and -not (Test-Path (Join-Path $ProjectRoot 'build/build.settings.psd1'))) {
+        $ProjectRoot = Split-Path $ProjectRoot -Parent
+    }
     $ModuleName   = 'Anvil'
     $ModuleDir    = Join-Path -Path $ProjectRoot -ChildPath 'src' | Join-Path -ChildPath $ModuleName
     $ManifestPath = Join-Path -Path $ModuleDir -ChildPath "$ModuleName.psd1"
 
     Get-Module -Name $ModuleName -ErrorAction SilentlyContinue | Remove-Module -Force
     Import-Module $ManifestPath -Force -ErrorAction Stop
+
+    $ManifestData = Import-PowerShellDataFile -Path $ManifestPath
+    $ExpectedFunctionCount = @($ManifestData.FunctionsToExport).Count
 }
 
 AfterAll {
@@ -57,6 +66,8 @@ Describe 'Module: Anvil' -Tag 'Unit' {
             $Exported | Should -Not -Contain 'Assert-ValidConfiguration'
             $Exported | Should -Not -Contain 'Copy-CITemplates'
             $Exported | Should -Not -Contain 'Test-Excluded'
+            $Exported | Should -Not -Contain 'Get-TestContent'
+            $Exported | Should -Not -Contain 'Get-FunctionContent'
         }
     }
 

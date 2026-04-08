@@ -1,7 +1,10 @@
 #Requires -Modules @{ ModuleName = 'Pester'; ModuleVersion = '5.0.0' }
 
 BeforeAll {
-    $ProjectRoot  = Split-Path -Path $PSScriptRoot -Parent | Split-Path -Parent
+    $ProjectRoot = $PSScriptRoot
+    while ($ProjectRoot -and -not (Test-Path (Join-Path $ProjectRoot 'build/build.settings.psd1'))) {
+        $ProjectRoot = Split-Path $ProjectRoot -Parent
+    }
     $ModuleName   = 'Anvil'
     $ModuleDir    = Join-Path -Path $ProjectRoot -ChildPath 'src' | Join-Path -ChildPath $ModuleName
     $ManifestPath = Join-Path -Path $ModuleDir -ChildPath "$ModuleName.psd1"
@@ -9,8 +12,6 @@ BeforeAll {
     Get-Module -Name $ModuleName -ErrorAction SilentlyContinue | Remove-Module -Force
     Import-Module $ManifestPath -Force -ErrorAction Stop
 
-    # Access the private function via the module scope
-    $AssertFn = & (Get-Module Anvil) { Get-Command Assert-ValidConfiguration }
 }
 
 AfterAll {
@@ -26,7 +27,7 @@ Describe 'Assert-ValidConfiguration' -Tag 'Unit' {
                 Author      = 'Test Author'
                 Description = 'A test module'
             }
-            { & (Get-Module Anvil) { Assert-ValidConfiguration -Configuration $args[0] } $Config } |
+            { InModuleScope 'Anvil' -ArgumentList $Config { param($Config) Assert-ValidConfiguration -Configuration $Config } } |
                 Should -Not -Throw
         }
 
@@ -40,7 +41,7 @@ Describe 'Assert-ValidConfiguration' -Tag 'Unit' {
                 CoverageThreshold    = 80
                 MinPowerShellVersion = '7.0'
             }
-            { & (Get-Module Anvil) { Assert-ValidConfiguration -Configuration $args[0] } $Config } |
+            { InModuleScope 'Anvil' -ArgumentList $Config { param($Config) Assert-ValidConfiguration -Configuration $Config } } |
                 Should -Not -Throw
         }
     }
@@ -48,19 +49,19 @@ Describe 'Assert-ValidConfiguration' -Tag 'Unit' {
     Context 'Missing required keys' {
         It 'rejects a config missing ModuleName' {
             $Config = @{ Author = 'X'; Description = 'Y' }
-            { & (Get-Module Anvil) { Assert-ValidConfiguration -Configuration $args[0] } $Config } |
+            { InModuleScope 'Anvil' -ArgumentList $Config { param($Config) Assert-ValidConfiguration -Configuration $Config } } |
                 Should -Throw '*ModuleName*'
         }
 
         It 'rejects a config missing Author' {
             $Config = @{ ModuleName = 'X'; Description = 'Y' }
-            { & (Get-Module Anvil) { Assert-ValidConfiguration -Configuration $args[0] } $Config } |
+            { InModuleScope 'Anvil' -ArgumentList $Config { param($Config) Assert-ValidConfiguration -Configuration $Config } } |
                 Should -Throw '*Author*'
         }
 
         It 'rejects a config with empty Description' {
             $Config = @{ ModuleName = 'X'; Author = 'Y'; Description = '' }
-            { & (Get-Module Anvil) { Assert-ValidConfiguration -Configuration $args[0] } $Config } |
+            { InModuleScope 'Anvil' -ArgumentList $Config { param($Config) Assert-ValidConfiguration -Configuration $Config } } |
                 Should -Throw '*Description*'
         }
     }
@@ -68,13 +69,13 @@ Describe 'Assert-ValidConfiguration' -Tag 'Unit' {
     Context 'ModuleName validation' {
         It 'rejects names starting with a digit' {
             $Config = @{ ModuleName = '1Bad'; Author = 'X'; Description = 'Y' }
-            { & (Get-Module Anvil) { Assert-ValidConfiguration -Configuration $args[0] } $Config } |
+            { InModuleScope 'Anvil' -ArgumentList $Config { param($Config) Assert-ValidConfiguration -Configuration $Config } } |
                 Should -Throw '*invalid characters*'
         }
 
         It 'rejects names with spaces' {
             $Config = @{ ModuleName = 'My Module'; Author = 'X'; Description = 'Y' }
-            { & (Get-Module Anvil) { Assert-ValidConfiguration -Configuration $args[0] } $Config } |
+            { InModuleScope 'Anvil' -ArgumentList $Config { param($Config) Assert-ValidConfiguration -Configuration $Config } } |
                 Should -Throw '*invalid characters*'
         }
     }
@@ -82,13 +83,13 @@ Describe 'Assert-ValidConfiguration' -Tag 'Unit' {
     Context 'Enum validation' {
         It 'rejects an unknown CIProvider' {
             $Config = @{ ModuleName = 'X'; Author = 'Y'; Description = 'Z'; CIProvider = 'Jenkins' }
-            { & (Get-Module Anvil) { Assert-ValidConfiguration -Configuration $args[0] } $Config } |
+            { InModuleScope 'Anvil' -ArgumentList $Config { param($Config) Assert-ValidConfiguration -Configuration $Config } } |
                 Should -Throw '*CIProvider*'
         }
 
         It 'rejects an unknown License' {
             $Config = @{ ModuleName = 'X'; Author = 'Y'; Description = 'Z'; License = 'GPL' }
-            { & (Get-Module Anvil) { Assert-ValidConfiguration -Configuration $args[0] } $Config } |
+            { InModuleScope 'Anvil' -ArgumentList $Config { param($Config) Assert-ValidConfiguration -Configuration $Config } } |
                 Should -Throw '*License*'
         }
     }
@@ -96,13 +97,13 @@ Describe 'Assert-ValidConfiguration' -Tag 'Unit' {
     Context 'Numeric validation' {
         It 'rejects CoverageThreshold above 100' {
             $Config = @{ ModuleName = 'X'; Author = 'Y'; Description = 'Z'; CoverageThreshold = 150 }
-            { & (Get-Module Anvil) { Assert-ValidConfiguration -Configuration $args[0] } $Config } |
+            { InModuleScope 'Anvil' -ArgumentList $Config { param($Config) Assert-ValidConfiguration -Configuration $Config } } |
                 Should -Throw '*CoverageThreshold*'
         }
 
         It 'rejects an invalid MinPowerShellVersion' {
             $Config = @{ ModuleName = 'X'; Author = 'Y'; Description = 'Z'; MinPowerShellVersion = 'nope' }
-            { & (Get-Module Anvil) { Assert-ValidConfiguration -Configuration $args[0] } $Config } |
+            { InModuleScope 'Anvil' -ArgumentList $Config { param($Config) Assert-ValidConfiguration -Configuration $Config } } |
                 Should -Throw '*MinPowerShellVersion*'
         }
     }

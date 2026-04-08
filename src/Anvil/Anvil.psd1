@@ -16,6 +16,8 @@
     FunctionsToExport = @(
         'New-ModuleProject'
         'Get-AnvilTemplate'
+        'New-AnvilTest'
+        'New-AnvilFunction'
     )
     CmdletsToExport   = @()
     VariablesToExport  = @()

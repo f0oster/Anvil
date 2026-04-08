@@ -1,7 +1,7 @@
 @{
     # Build toolchain for Anvil
     #
-    # Group modules by purpose.  Use any group names you like — they become
+    # Group modules by purpose.  Use any group names you like -- they become
     # selectable scopes in bootstrap.ps1 via -Scope.
     #
     # Syntax per module:  'ModuleName' = 'VersionSpec'

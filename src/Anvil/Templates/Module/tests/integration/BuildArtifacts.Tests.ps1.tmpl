@@ -1,11 +1,13 @@
 #Requires -Modules @{ ModuleName = 'Pester'; ModuleVersion = '5.0.0' }
 
 BeforeAll {
-    $ProjectRoot  = Split-Path -Path $PSScriptRoot -Parent | Split-Path -Parent
+    $ProjectRoot = $PSScriptRoot
+    while ($ProjectRoot -and -not (Test-Path (Join-Path $ProjectRoot 'build/build.settings.psd1'))) {
+        $ProjectRoot = Split-Path $ProjectRoot -Parent
+    }
     $ModuleName   = '<%ModuleName%>'
     $ArtifactsDir = Join-Path -Path $ProjectRoot -ChildPath 'artifacts'
     $PackageDir   = Join-Path -Path $ArtifactsDir -ChildPath 'package'
-    $ArchiveDir   = Join-Path -Path $ArtifactsDir -ChildPath 'archive'
     $StagedModule = Join-Path -Path $PackageDir -ChildPath $ModuleName
     $StagedPsm1   = Join-Path -Path $StagedModule -ChildPath "$ModuleName.psm1"
     $StagedPsd1   = Join-Path -Path $StagedModule -ChildPath "$ModuleName.psd1"
@@ -16,7 +18,6 @@ Describe 'Build Artifacts' -Tag 'Integration' {
     Context 'Directory structure' {
         It 'artifacts directory exists'    { $ArtifactsDir | Should -Exist }
         It 'staged module exists'          { $StagedModule | Should -Exist }
-        It 'archive directory exists'      { $ArchiveDir   | Should -Exist }
     }
 
     Context 'Staged module' {
@@ -46,15 +47,6 @@ Describe 'Build Artifacts' -Tag 'Integration' {
         }
     }
 
-    Context 'Archive' {
-        It 'contains at least one .zip' {
-            Get-ChildItem -Path $ArchiveDir -Filter '*.zip' | Should -Not -BeNullOrEmpty
-        }
-        It 'archive is non-empty' {
-            $Z = Get-ChildItem -Path $ArchiveDir -Filter '*.zip' | Select-Object -First 1
-            $Z.Length | Should -BeGreaterThan 0
-        }
-    }
 }
 
 AfterAll {

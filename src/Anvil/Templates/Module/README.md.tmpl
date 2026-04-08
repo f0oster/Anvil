@@ -46,8 +46,65 @@ Invoke-Build -File ./build/module.build.ps1
 
 1. Create `src/<%ModuleName%>/Public/Verb-Noun.ps1`
 2. Add the function name to `FunctionsToExport` in the manifest
-3. Create `tests/unit/Verb-Noun.Tests.ps1`
+3. Create `tests/unit/Public/Verb-Noun.Tests.ps1`
 4. Run `Invoke-Build -File ./build/module.build.ps1 -Task Lint, Test`
+
+If you have Anvil installed, you can use `New-AnvilFunction` to generate both files:
+
+```powershell
+New-AnvilFunction -FunctionName 'Verb-Noun' -Scope Public
+```
+
+## Renaming the module
+
+To rename the module from `<%ModuleName%>` to a new name, update the following
+locations. Work through them in order -- update file contents first, then rename
+files and directories from deepest to shallowest.
+
+**Before you start:** commit any pending changes so you can revert if needed.
+
+### 1. File contents
+
+Replace every occurrence of the old module name in these files:
+
+| File | What to change |
+|------|---------------|
+| `build/build.settings.psd1` | `ModuleName = '<%ModuleName%>'` |
+| `src/<%ModuleName%>/<%ModuleName%>.psd1` | `RootModule = '<%ModuleName%>.psm1'` and any other references |
+| `tests/unit/<%ModuleName%>.Module.Tests.ps1` | `$ModuleName = '<%ModuleName%>'` and `Get-Module -Name '<%ModuleName%>'` |
+| `tests/unit/Public/*.Tests.ps1` | `$ModuleName = '<%ModuleName%>'` and `Get-Module '<%ModuleName%>'` |
+| `tests/unit/Private/*.Tests.ps1` | `$ModuleName = '<%ModuleName%>'`, `Get-Module '<%ModuleName%>'`, and `InModuleScope '<%ModuleName%>'` |
+| `README.md` | Project title and any references |
+
+A global find-and-replace across the project works well here. The module name
+appears as a literal string (in quotes or as a path segment), so a plain text
+search is sufficient.
+
+### 2. File renames
+
+```
+src/<%ModuleName%>/<%ModuleName%>.psd1  →  src/<%ModuleName%>/NewName.psd1
+src/<%ModuleName%>/<%ModuleName%>.psm1  →  src/<%ModuleName%>/NewName.psm1
+tests/unit/<%ModuleName%>.Module.Tests.ps1  →  tests/unit/NewName.Module.Tests.ps1
+```
+
+### 3. Directory rename
+
+```
+src/<%ModuleName%>/  →  src/NewName/
+```
+
+Rename the directory last. All file contents and filenames already reference the
+new name at this point.
+
+### 4. Verify
+
+```powershell
+Invoke-Build -File ./build/module.build.ps1 -Task Lint, Test
+```
+
+If everything passes, commit the rename as a single commit so it is easy to
+review or revert.
 
 ## License
 

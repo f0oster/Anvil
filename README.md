@@ -29,6 +29,25 @@ This creates a `NetworkTools/` directory with module source, build scripts, test
 
 `Get-AnvilTemplate` lists the available templates and CI providers shipped with the module.
 
+### After scaffolding
+
+Anvil also provides commands for working inside a scaffolded project:
+
+```powershell
+# Create a public function and its test file
+New-AnvilFunction -FunctionName 'Get-Widget' -Scope Public
+
+# Create a private function in a subdirectory
+New-AnvilFunction -FunctionName 'Format-Row' -Scope Private -Location 'Helpers'
+
+# Create just a test file for an existing function
+New-AnvilTest -FunctionName 'Get-Widget' -Scope Public
+```
+
+`New-AnvilFunction` validates that public function names use an [approved PowerShell verb](https://learn.microsoft.com/en-us/powershell/scripting/developer/cmdlet/approved-verbs-for-windows-powershell-commands). Use `-SkipVerbCheck` to override this.
+
+Both commands auto-detect the project root by walking up the directory tree from your current location. Pass `-Path` to specify it explicitly.
+
 ## What gets generated
 
 The scaffolded project follows a `src/` + `build/` + `tests/` layout. During development, the `.psm1` dot-sources individual files from `Public/` and `Private/`. At build time, InvokeBuild compiles them into a single `.psm1` for faster module loading.

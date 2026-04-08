@@ -1,3 +1,0 @@
-# Add your public (exported) functions here, one file per function.
-# Example: Get-Widget.ps1 containing function Get-Widget { ... }
-# Then add the function name to FunctionsToExport in the module manifest.

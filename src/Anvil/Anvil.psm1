@@ -12,17 +12,17 @@
 $script:TemplateRoot = Join-Path -Path $PSScriptRoot -ChildPath 'Templates'
 
 # Discover and dot-source function files
-$PublicDir  = Join-Path -Path $PSScriptRoot -ChildPath 'Public'
+$PublicDir = Join-Path -Path $PSScriptRoot -ChildPath 'Public'
 $PrivateDir = Join-Path -Path $PSScriptRoot -ChildPath 'Private'
 
-$PublicFunctions  = @()
+$PublicFunctions = @()
 $PrivateFunctions = @()
 
 if (Test-Path -Path $PublicDir) {
-    $PublicFunctions = Get-ChildItem -Path $PublicDir -Filter '*.ps1' -Recurse -ErrorAction SilentlyContinue
+    $PublicFunctions = @(Get-ChildItem -Path $PublicDir -Filter '*.ps1' -Recurse -ErrorAction SilentlyContinue)
 }
 if (Test-Path -Path $PrivateDir) {
-    $PrivateFunctions = Get-ChildItem -Path $PrivateDir -Filter '*.ps1' -Recurse -ErrorAction SilentlyContinue
+    $PrivateFunctions = @(Get-ChildItem -Path $PrivateDir -Filter '*.ps1' -Recurse -ErrorAction SilentlyContinue)
 }
 
 foreach ($File in @($PublicFunctions + $PrivateFunctions)) {

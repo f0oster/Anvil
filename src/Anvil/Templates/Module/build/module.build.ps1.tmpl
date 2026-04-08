@@ -72,7 +72,7 @@ task Validate {
     Write-Build White "  PowerShell $($PSVersionTable.PSVersion)"
     Assert-FileExists -Path $script:ManifestPath -Description 'Module manifest'
     $Manifest = Test-ModuleManifest -Path $script:ManifestPath -ErrorAction Stop
-    Write-Build White "  Manifest OK — $($Manifest.Name) v$($Manifest.Version)"
+    Write-Build White "  Manifest OK: $($Manifest.Name) v$($Manifest.Version)"
     Assert-FileExists -Path $script:ModuleFilePath -Description 'Module .psm1'
     Write-BuildFooter 'Validation complete'
 }
@@ -123,7 +123,7 @@ task Docs {
 
     $PlatyModule = 'Microsoft.PowerShell.PlatyPS'
     if (-not (Get-Module -ListAvailable -Name $PlatyModule -ErrorAction SilentlyContinue)) {
-        Write-Build Yellow "  $PlatyModule not installed — skipping docs generation"
+        Write-Build Yellow "  $PlatyModule not installed -- skipping docs generation"
         return
     }
     Import-Module $PlatyModule -ErrorAction Stop
@@ -201,7 +201,7 @@ task Build {
 task IntegrationTest {
     Write-BuildHeader 'Integration Tests'
     if (-not (Test-Path -Path $script:IntTestDir)) {
-        Write-Build Yellow '  No integration tests found — skipping'
+        Write-Build Yellow '  No integration tests found -- skipping'
         return
     }
     $Cfg = New-PesterConfiguration
@@ -273,7 +273,7 @@ task DevCC {
     Invoke-Pester -Configuration $Cfg
 
     Write-Build White "  Coverage file: $(Join-Path -Path $script:ProjectRoot -ChildPath 'coverage.xml')"
-    Write-BuildFooter 'Dev coverage complete — open Coverage Gutters in VS Code'
+    Write-BuildFooter 'Dev coverage complete -- open Coverage Gutters in VS Code'
 }
 
 # Composite tasks
