@@ -42,13 +42,11 @@ Deletes and recreates the `artifacts/` directory with subdirectories for `packag
 
 ### Validate
 
-Sanity checks before doing real work. Verifies the module manifest exists and is valid (`Test-ModuleManifest`), confirms the `.psm1` exists, and reports the PowerShell version. If the manifest is malformed, the build fails here with a clear error rather than somewhere deeper in the pipeline.
+Sanity checks before doing real work. Verifies the module manifest exists and is valid, confirms the `.psm1` exists, and reports the PowerShell version. If the manifest is malformed, the build fails here with a clear error rather than somewhere deeper in the pipeline.
 
 ### Format
 
 Runs `Invoke-Formatter` on every `.ps1` file in the module source directory using the rules from `PSScriptAnalyzerSettings.psd1`. This auto-fixes formatting issues — indentation, whitespace around operators, brace placement — so the Lint task only reports substantive problems.
-
-The formatter has safety guards: it skips empty files, catches formatter errors gracefully, and refuses to overwrite a file if the formatted output is empty. If a file can't be formatted, you'll see a yellow "Skipped" warning.
 
 This task modifies your source files in place. If you're tracking formatting changes, commit before running the build.
 
@@ -83,6 +81,8 @@ The test task fails the build if any test fails or if coverage drops below the t
 
 ### Docs
 
+This task is only included in the default pipeline when the project was scaffolded with `-IncludeDocs`. If omitted, the task still exists and can be run manually, but it won't run as part of `Invoke-Build` with no `-Task` flag.
+
 Generates and maintains platyPS markdown documentation in `docs/commands/`. The behavior depends on whether documentation already exists:
 
 - **First run** (no `docs/commands/` directory): generates markdown for every exported function from the module's comment-based help using `New-MarkdownHelp`
@@ -97,23 +97,14 @@ If platyPS isn't installed, the Docs task skips gracefully.
 Produces the compiled module in `artifacts/package/<ModuleName>/`. This is the most complex task and does several things:
 
 1. **Copies static assets** — `Types/`, `Formats/`, `Assemblies/` directories (if they exist in source)
-2. **Compiles the `.psm1`** — merges `Imports.ps1`, then `PrivateClasses/*.ps1`, `Private/*.ps1`, and `Public/*.ps1` into a single file. The compiled module loads faster than dot-sourcing individual files at import time.
-3. **Generates the manifest** — creates a fresh `.psd1` via `New-ModuleManifest` with values from the source manifest. `FunctionsToExport` is set to the actual Public function names (discovered from filenames), not a wildcard.
+2. **Compiles the `.psm1`** — merges `Imports.ps1`, then `PrivateClasses/*.ps1`, `Private/*.ps1`, and `Public/*.ps1` into a single file in that order. The compiled module loads faster than dot-sourcing individual files at import time.
+3. **Generates the manifest** — creates a fresh `.psd1` with `FunctionsToExport` set to the Public function names.
 4. **Generates MAML help** — if `docs/commands/` has markdown and platyPS is available, converts it to MAML XML in the staged module's `en-US/` directory for `Get-Help` support.
 5. **Injects version** — if `-NewVersion` was passed, the staged manifest gets that version instead of the source's `0.0.0`.
 
 ### IntegrationTest
 
-Runs Pester 5 integration tests from `tests/integration/` against the build output in `artifacts/package/`. These tests validate that the compilation worked correctly:
-
-- The staged directory exists and contains both `.psd1` and `.psm1`
-- The manifest is valid
-- The compiled `.psm1` doesn't contain `Export-ModuleMember` (the manifest handles exports)
-- The compiled `.psm1` doesn't dot-source individual files (it's a single merged file)
-- The manifest has explicit `FunctionsToExport` (not a wildcard)
-- The staged module can be imported successfully
-
-These tests catch build process bugs, not module logic bugs.
+Runs the built-in integration tests from `tests/integration/` against the compiled output in `artifacts/package/`. These tests verify that the module was built correctly and can be imported. They're included in every scaffolded project — you don't need to write or maintain them.
 
 ### Package
 
@@ -121,7 +112,7 @@ Creates a ZIP archive of the staged module in `artifacts/archive/`. The archive 
 
 ### Version
 
-Reports the source manifest version and, if `-NewVersion` or `-Prerelease` were provided, confirms what the Build task will use. This task does not modify any files — version injection happens in the Build task when generating the staged manifest.
+Reports the current version and confirms what `-NewVersion` or `-Prerelease` will apply.
 
 ### Publish
 
@@ -149,7 +140,7 @@ git push origin v1.2.0
 # CI runs: Invoke-Build -Task Release -NewVersion 1.2.0
 ```
 
-The Build task writes the injected version into the staged manifest. The source `.psd1` is never modified. This means:
+The source `.psd1` is never modified. This means:
 - No "bump version" commits cluttering your history
 - No drift between tags and manifest versions
 - CI is the single source of truth for release versions

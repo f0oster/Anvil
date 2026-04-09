@@ -14,7 +14,7 @@ Available providers: `GitHub`, `AzurePipelines`, `GitLab`, `None`. Use `None` if
 
 All three providers follow the same pattern. Understanding this flow is important before configuring anything.
 
-1. You develop on a branch, push, and merge. CI runs the default pipeline (Format, Lint, Test, Build, Package) on every push. No publishing happens.
+1. You develop on a branch, push, and merge. CI runs the full default pipeline on every push. No publishing happens.
 
 2. When you're ready to release, you tag the commit:
 
@@ -85,7 +85,7 @@ The publish stage only runs for tags matching `v*` (controlled by a `rules` clau
 
 GitLab CI uses the `mcr.microsoft.com/powershell:lts-ubuntu-22.04` Docker image. The test stage runs on both Linux and Windows (if you have Windows runners tagged with `windows`). If you don't have Windows runners, remove or modify the `test:windows` job.
 
-Test results use JUnit format (`$env:PESTER_OUTPUT_FORMAT` is set to `JUnitXml`) for GitLab's test report integration.
+Test results use JUnit format for GitLab's test report integration.
 
 ## Testing CI locally
 

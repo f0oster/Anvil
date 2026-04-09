@@ -10,7 +10,7 @@ By design. The source manifest uses `0.0.0` as a placeholder. Real versions are 
 Invoke-Build -Task Release -NewVersion 1.0.0
 ```
 
-In CI, the version is extracted from the git tag automatically. The source `.psd1` is never modified — version injection is ephemeral within the build workspace. This avoids "version bump" commits and ensures the git tag is the single source of truth. See [Build Pipeline > Version Management](build-pipeline.md#version-management).
+In CI, the version is extracted from the git tag automatically. The source `.psd1` is never modified. This avoids "version bump" commits and ensures the git tag is the single source of truth. See [Build Pipeline > Version Management](build-pipeline.md#version-management).
 
 ### The first build after scaffolding fails
 
@@ -24,11 +24,7 @@ If none of these help, this is a bug in Anvil — please report it.
 
 ### What does the Format task actually change?
 
-It runs `Invoke-Formatter` (from PSScriptAnalyzer) on every `.ps1` file in your module source directory. It auto-fixes formatting issues defined in `PSScriptAnalyzerSettings.psd1`: indentation, whitespace around operators, brace placement (OTBS style), and similar.
-
-The task modifies files in place. It won't overwrite a file if the formatter returns empty output (safety guard against formatter bugs), and it skips files that cause formatter errors.
-
-If you want to see what it would change without modifying files, run `Invoke-ScriptAnalyzer -Fix` manually with `-WhatIf`.
+It runs `Invoke-Formatter` (from PSScriptAnalyzer) on every `.ps1` file in your module source directory using the rules in `PSScriptAnalyzerSettings.psd1`. It auto-fixes indentation, whitespace around operators, brace placement (OTBS style), and similar formatting issues. Changes are applied in place.
 
 ### How do I skip the Docs task?
 
@@ -66,7 +62,7 @@ It 'formats the output correctly' {
 }
 ```
 
-Don't wrap `Describe` or `Context` in `InModuleScope` — only `It` blocks. Wrapping outer blocks prevents Pester from verifying that public functions are actually exported and slows down test discovery.
+Don't wrap `Describe` or `Context` in `InModuleScope` — only `It` blocks.
 
 ### How do I pass data into InModuleScope?
 
@@ -146,9 +142,7 @@ The Build task converts `docs/commands/*.md` to MAML XML in the staged module's 
 
 ### Why is FunctionsToExport commented out in the source manifest?
 
-During development, the `.psm1`'s `Export-ModuleMember` controls which functions are exported (everything in `Public/`). The manifest's `FunctionsToExport` isn't needed.
-
-At build time, the Build task generates a fresh manifest with an explicit `FunctionsToExport` list derived from the filenames in `Public/`. This means you never maintain an export list manually — adding a file to `Public/` is enough to export a function.
+The Build task generates `FunctionsToExport` automatically from the files in `Public/`. You never need to maintain the export list — adding a file to `Public/` is enough.
 
 ### Why are there sample functions in the scaffolded project?
 
@@ -160,13 +154,11 @@ Yes. Set `-MinPowerShellVersion 5.1` and `-CompatiblePSEditions @('Desktop', 'Co
 
 The build tooling itself requires 7.2+ (because ModuleFast does), but the module you produce can target 5.1. These are separate concerns — you build on modern PowerShell and ship for whatever version your users need.
 
-### What's the difference between Anvil and Catesta?
+### How is Anvil different from other scaffolders?
 
-Both scaffold PowerShell module projects with build pipelines. Key differences:
-
-- **Template engine:** Anvil uses a custom engine with literal `.Replace()` — no regex, no Plaster dependency, no XML schema
-- **Post-scaffolding tools:** Anvil provides `New-AnvilFunction`, `New-AnvilClass`, and `New-AnvilTest` for ongoing development
-- **Version strategy:** Anvil uses `0.0.0` as a placeholder with CI-injected versions from git tags
-- **Formatting:** Anvil includes an auto-format task (`Invoke-Formatter`) that runs before linting
-- **Custom rules:** Anvil ships project-local PSScriptAnalyzer rules in `build/analyzers/`
-- **Interactive mode:** Running `New-AnvilModule` with no arguments starts a guided wizard
+- **No Plaster dependency** — Anvil uses its own template engine with no XML schema
+- **Post-scaffolding tools** — `New-AnvilFunction`, `New-AnvilClass`, and `New-AnvilTest` for ongoing development
+- **Version strategy** — `0.0.0` placeholder with CI-injected versions from git tags
+- **Auto-formatting** — `Invoke-Formatter` runs before linting as part of the pipeline
+- **Custom lint rules** — project-local PSScriptAnalyzer rules in `build/analyzers/`
+- **Interactive mode** — running `New-AnvilModule` with no arguments starts a guided wizard

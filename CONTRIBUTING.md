@@ -2,7 +2,7 @@
 
 ## Prerequisites
 
-- **PowerShell 7.4+** (recommended) or **Windows PowerShell 5.1**
+- **PowerShell 7.2+** (required by the bootstrap script and ModuleFast)
 - No other tooling required — the bootstrap script handles everything.
 
 ## Setup

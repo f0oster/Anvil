@@ -6,6 +6,7 @@ This page explains what Anvil generates and why each piece exists. Understanding
 
 ```
 MyModule/
+├── .github/workflows/         CI/CD workflows (if CIProvider is GitHub)
 ├── src/MyModule/              Module source code
 │   ├── MyModule.psd1          Module manifest
 │   ├── MyModule.psm1          Module loader (dot-sources everything)
@@ -41,7 +42,7 @@ MyModule/
 
 ### The manifest (`MyModule.psd1`)
 
-The module manifest declares metadata (author, description, version, tags) and runtime properties (PowerShell version, compatible editions, required modules). During development, `FunctionsToExport` is commented out — the `.psm1` controls exports instead. The Build task generates a clean manifest for publishing with an explicit export list derived from the filenames in `Public/`.
+The module manifest declares metadata (author, description, version, tags) and runtime properties (PowerShell version, compatible editions, required modules). During development, `FunctionsToExport` is commented out — the Build task generates this automatically from the files in `Public/`.
 
 The source version is always `0.0.0`. This is a placeholder. Real versions are injected at build time (see [Build Pipeline](build-pipeline.md#version-management)).
 
@@ -54,7 +55,7 @@ During development, the `.psm1` dot-sources files in a specific order:
 3. **`Public/*.ps1`** — exported functions
 4. **`Private/*.ps1`** — internal helpers
 
-It then calls `Export-ModuleMember` to export only the Public functions. This file is replaced entirely during compilation — the Build task merges everything into a single `.psm1` for faster module loading in production.
+It exports only the Public functions. During compilation, this file is replaced with a single merged `.psm1`.
 
 ### Imports.ps1
 
@@ -65,7 +66,7 @@ $script:ResourcePath = Join-Path -Path $PSScriptRoot -ChildPath 'Resources'
 $script:DefaultTimeout = 30
 ```
 
-At build time, its contents are prepended to the compiled `.psm1`. The file is not copied to the build output as a separate file.
+At build time, this content is included in the compiled module.
 
 ### Public, Private, PrivateClasses
 
@@ -137,9 +138,9 @@ The test structure mirrors the source structure:
 
 **Unit tests** (`tests/unit/`) test source code directly by importing the module from `src/`. Public function tests call functions by name. Private function and class tests use `InModuleScope` to reach inside the module.
 
-**Integration tests** (`tests/integration/`) run after the Build task and validate the compiled artifacts. They check that the compiled `.psm1` is a single file (no dot-sourcing), the manifest has explicit exports, and the module can be imported from the build output.
+**Integration tests** (`tests/integration/`) run after the Build task and validate that the compiled module was built correctly and can be imported.
 
-Each test file follows the same pattern: walk up to find the project root, import the module in `BeforeAll`, clean up in `AfterAll`. This walk-up pattern makes tests resilient to directory restructuring — you can nest test files in subdirectories without breaking path resolution.
+Each test file imports the module in `BeforeAll` and cleans up in `AfterAll`.
 
 ## Configuration files
 
@@ -163,4 +164,4 @@ artifacts/
 └── archive/                ZIP of the staged module
 ```
 
-The `en-US/` directory only appears in build output, never in source. The compiled `.psm1` contains all code from Imports, PrivateClasses, Private, and Public merged into one file. The manifest has a real `FunctionsToExport` list (not a wildcard) derived from the Public function filenames.
+The `en-US/` directory contains generated MAML help for `Get-Help` support.
