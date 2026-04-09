@@ -37,8 +37,8 @@
             CheckParameter                  = $false
             IgnoreAssignmentOperatorInsideHashTable = $true
         }
-        PSUseCorrectCasing = @{
-            Enable = $true
-        }
+        # PSUseCorrectCasing = @{
+        #     Enable = $true
+        # }
     }
 }

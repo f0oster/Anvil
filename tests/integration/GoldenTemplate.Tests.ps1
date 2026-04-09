@@ -125,9 +125,9 @@ Describe 'New-AnvilModule golden template' -Tag 'Integration' {
             $Content | Should -Match $script:ProjectName
             $Content | Should -Not -Match '<%ModuleName%>'
         }
-        It 'build script contains the correct coverage threshold' {
+        It 'build settings contains the correct coverage threshold' {
             $P = Join-Path -Path $script:ProjectPath -ChildPath 'build' |
-                Join-Path -ChildPath 'module.build.ps1'
+                Join-Path -ChildPath 'build.settings.psd1'
             $Content = Get-Content -Path $P -Raw
             $Content | Should -Match '75'
         }
