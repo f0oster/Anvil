@@ -90,11 +90,10 @@ function New-AnvilFunction {
     # Resolve the project root
     if ($Path) {
         $ProjectRoot = $Path
-    }
-    else {
+    } else {
         $Message = 'No -Path provided. The current directory will be searched, ' +
-            'walking up the directory tree to find the project root (build/build.settings.psd1). ' +
-            'If you are not inside an Anvil project, this will walk to the root of the drive.'
+        'walking up the directory tree to find the project root (build/build.settings.psd1). ' +
+        'If you are not inside an Anvil project, this will walk to the root of the drive.'
         if (-not $PSCmdlet.ShouldContinue($Message, 'Search for project root?')) {
             return
         }

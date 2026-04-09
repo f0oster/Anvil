@@ -38,8 +38,7 @@ Describe '$FunctionName' -Tag 'Unit' {
     }
 }
 "@
-    }
-    else {
+    } else {
         $Body = @"
 
 Describe '$FunctionName' -Tag 'Unit' {

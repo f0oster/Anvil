@@ -3,6 +3,7 @@
 
     ExcludeRules = @(
         'PSAvoidUsingWriteHost'
+        'PSUseSingularNouns'
     )
 
     Rules = @{
@@ -16,7 +17,7 @@
             Enable             = $true
             NoEmptyLineBefore  = $false
             IgnoreOneLineBlock = $true
-            NewLineAfter      = $true
+            NewLineAfter      = $false
         }
         PSUseConsistentIndentation = @{
             Enable              = $true

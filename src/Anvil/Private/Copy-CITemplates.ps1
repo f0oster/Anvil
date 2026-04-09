@@ -37,7 +37,7 @@ function Copy-CITemplates {
     )
 
     $CiTemplatePath = Join-Path -Path $script:TemplateRoot -ChildPath 'CI'
-    $ProviderPath   = Join-Path -Path $CiTemplatePath -ChildPath $Provider
+    $ProviderPath = Join-Path -Path $CiTemplatePath -ChildPath $Provider
 
     if (-not (Test-Path -Path $ProviderPath)) {
         Write-Warning "CI template directory not found for provider '$Provider' at: $ProviderPath"

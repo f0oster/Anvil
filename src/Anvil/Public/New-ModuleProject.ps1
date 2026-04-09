@@ -161,20 +161,19 @@ function New-ModuleProject {
     if (Test-Path -Path $ProjectRoot) {
         if ($Force) {
             Remove-Item -Path $ProjectRoot -Recurse -Force
-        }
-        else {
+        } else {
             throw "Destination already exists: $ProjectRoot — remove it first, choose a different name, or use -Force."
         }
     }
 
     $ModuleGuid = [guid]::NewGuid().ToString()
-    $Year       = (Get-Date).Year.ToString()
+    $Year = (Get-Date).Year.ToString()
     $DocsEnabled = if ($IncludeDocs) { 'true' } else { 'false' }
 
     $DefaultTasks = if ($IncludeDocs) {
-        'Clean, Validate, Lint, Test, Docs, Build, IntegrationTest, Package'
+        'Clean, Validate, Format, Lint, Test, Docs, Build, IntegrationTest, Package'
     } else {
-        'Clean, Validate, Lint, Test, Build, IntegrationTest, Package'
+        'Clean, Validate, Format, Lint, Test, Build, IntegrationTest, Package'
     }
 
     $Tokens = @{
@@ -244,12 +243,10 @@ function New-ModuleProject {
                     & git add -A
                     & git commit --quiet -m 'Initial scaffold via Anvil'
                     Write-Host "[Anvil] Git repository initialised with initial commit." -ForegroundColor DarkGray
-                }
-                finally {
+                } finally {
                     Pop-Location
                 }
-            }
-            else {
+            } else {
                 Write-Warning 'git not found on PATH — skipping -GitInit.'
             }
         }

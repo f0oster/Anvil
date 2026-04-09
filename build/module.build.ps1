@@ -5,7 +5,7 @@
 
 .DESCRIPTION
     Task graph:
-        . (default)  ->  Clean, Validate, Lint, Test, Docs, Build, IntegrationTest, Package
+        . (default)  ->  Clean, Validate, Format, Lint, Test, Docs, Build, IntegrationTest, Package
         Release      ->  . + Publish
         DevCC        ->  generate Coverage Gutters output for VS Code
 
@@ -77,6 +77,33 @@ task Validate {
     Write-BuildFooter 'Validation complete'
 }
 
+task Format {
+    Write-BuildHeader 'Format (Invoke-Formatter)'
+    $SettingsPath = Join-Path -Path $script:ProjectRoot -ChildPath 'PSScriptAnalyzerSettings.psd1'
+    $FormatterParams = @{}
+    if (Test-Path -Path $SettingsPath) { $FormatterParams['Settings'] = $SettingsPath }
+    $Files = Get-ChildItem -Path $script:ModuleDir -Filter '*.ps1' -Recurse
+    foreach ($File in $Files) {
+        $Original = Get-Content -Path $File.FullName -Raw
+        if ([string]::IsNullOrWhiteSpace($Original)) { continue }
+        try {
+            $Formatted = Invoke-Formatter -ScriptDefinition $Original @FormatterParams
+        } catch {
+            Write-Build Yellow "  Skipped (formatter error): $($File.Name)"
+            continue
+        }
+        if ([string]::IsNullOrWhiteSpace($Formatted)) {
+            Write-Build Yellow "  Skipped (empty result): $($File.Name)"
+            continue
+        }
+        if ($Formatted -ne $Original) {
+            Set-Content -Path $File.FullName -Value $Formatted -NoNewline
+            Write-Build DarkGray "  Formatted: $($File.Name)"
+        }
+    }
+    Write-BuildFooter 'Formatting complete'
+}
+
 task Lint {
     Write-BuildHeader 'Lint (PSScriptAnalyzer)'
     $Params = @{
@@ -86,6 +113,14 @@ task Lint {
     }
     $SettingsPath = Join-Path -Path $script:ProjectRoot -ChildPath 'PSScriptAnalyzerSettings.psd1'
     if (Test-Path -Path $SettingsPath) { $Params['Settings'] = $SettingsPath }
+    $AnalyzersDir = Join-Path -Path $PSScriptRoot -ChildPath 'analyzers'
+    if (Test-Path -Path $AnalyzersDir) {
+        $RuleFiles = (Get-ChildItem -Path $AnalyzersDir -Filter '*.psm1').FullName
+        if ($RuleFiles) {
+            $Params['CustomRulePath'] = $RuleFiles
+            $Params['IncludeDefaultRules'] = $true
+        }
+    }
     $Results = Invoke-ScriptAnalyzer @Params
     if ($Results) {
         $Results | Format-Table -AutoSize
@@ -247,8 +282,7 @@ task Version {
     if ($NewVersion) {
         Update-ModuleManifest -Path $script:ManifestPath -ModuleVersion $NewVersion
         Write-Build Green "  Updated: $NewVersion"
-    }
-    else {
+    } else {
         Write-Build DarkGray '  Pass -NewVersion to bump: Invoke-Build Version -NewVersion 1.2.0'
     }
     Write-BuildFooter 'Version task complete'
@@ -287,5 +321,5 @@ task DevCC {
 }
 
 # Composite tasks
-task . Clean, Validate, Lint, Test, Docs, Build, IntegrationTest, Package
+task . Clean, Validate, Format, Lint, Test, Docs, Build, IntegrationTest, Package
 task Release ., Publish

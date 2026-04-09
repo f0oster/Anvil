@@ -79,8 +79,7 @@ function Assert-ValidConfiguration {
     if ($Configuration.ContainsKey('MinPowerShellVersion')) {
         try {
             [void][Version]::new($Configuration['MinPowerShellVersion'])
-        }
-        catch {
+        } catch {
             $Errors.Add("MinPowerShellVersion '$($Configuration['MinPowerShellVersion'])' is not a valid version string.")
         }
     }

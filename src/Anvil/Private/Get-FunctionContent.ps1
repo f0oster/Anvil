@@ -26,8 +26,7 @@ function $FunctionName {
     # TODO: Implement
 }
 "@
-    }
-    else {
+    } else {
         @"
 function $FunctionName {
     [CmdletBinding()]

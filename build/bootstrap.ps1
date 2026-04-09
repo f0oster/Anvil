@@ -45,8 +45,7 @@ $ErrorActionPreference = 'Stop'
 if (-not (Get-Module -ListAvailable -Name ModuleFast -ErrorAction SilentlyContinue)) {
     Write-Host '[bootstrap] Installing ModuleFast ...' -ForegroundColor Cyan
     Invoke-WebRequest -Uri 'bit.ly/modulefast' -UseBasicParsing | Invoke-Expression
-}
-else {
+} else {
     Import-Module ModuleFast -ErrorAction Stop
 }
 
@@ -66,8 +65,7 @@ if ($Scope) {
         throw "Unknown scope(s): $($Invalid -join ', '). Available: $Available"
     }
     $SelectedGroups = $Scope
-}
-else {
+} else {
     $SelectedGroups = @($AllGroups.Keys)
 }
 
@@ -103,8 +101,7 @@ if ($Update) { $Params['Update'] = $true }
 
 if ($Plan) {
     Install-ModuleFast @Params -Plan
-}
-else {
+} else {
     Install-ModuleFast @Params
     Write-Host '[bootstrap] Done.' -ForegroundColor Green
 }

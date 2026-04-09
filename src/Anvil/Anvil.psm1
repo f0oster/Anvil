@@ -28,8 +28,7 @@ if (Test-Path -Path $PrivateDir) {
 foreach ($File in @($PublicFunctions + $PrivateFunctions)) {
     try {
         . $File.FullName
-    }
-    catch {
+    } catch {
         Write-Error -Message "Failed to import $($File.FullName): $_"
     }
 }

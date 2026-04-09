@@ -34,7 +34,8 @@ Invoke-Build -File ./build/module.build.ps1
 
 | Task              | Description                                            |
 |-------------------|--------------------------------------------------------|
-| `.` (default)     | Clean → Validate → Lint → Test → Docs → Package       |
+| `.` (default)     | Clean → Validate → Format → Lint → Test → Docs → Package |
+| `Format`          | Auto-fix formatting with Invoke-Formatter               |
 | `Lint`            | PSScriptAnalyzer with project settings                 |
 | `Test`            | Pester 5 unit tests + code coverage                    |
 | `IntegrationTest` | Post-build artifact validation                         |

@@ -107,8 +107,7 @@ function Invoke-TemplateEngine {
             $Content = Get-Content -Path $File.FullName -Raw -ErrorAction Stop
             $Content = Resolve-ContentTokens -Content $Content -Tokens $Tokens
             Set-Content -Path $TargetPath -Value $Content -NoNewline -ErrorAction Stop
-        }
-        else {
+        } else {
             # Binary-safe copy
             Copy-Item -Path $File.FullName -Destination $TargetPath -Force
         }
