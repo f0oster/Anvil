@@ -2,10 +2,9 @@
     RootModule        = 'Anvil.psm1'
     ModuleVersion     = '0.0.0'
     GUID              = '3a2b1c4d-5e6f-7a8b-9c0d-1e2f3a4b5c6d'
-    # TODO: Replace placeholder values before publishing to PSGallery
-    Author            = 'TODO'
-    CompanyName       = 'TODO'
-    Copyright         = '(c) 2026 TODO. All rights reserved.'
+    Author            = 'f0oster'
+    CompanyName       = ''
+    Copyright         = '(c) 2026 f0oster. All rights reserved.'
     Description       = 'Scaffolds production-grade PowerShell module projects with opinionated build, test, lint, docs, and CI/CD pipelines.'
     PowerShellVersion = '7.2'
 
@@ -25,9 +24,8 @@
     PrivateData = @{
         PSData = @{
             Tags         = @('Module', 'Scaffold', 'Template', 'Build', 'CI', 'Pester', 'InvokeBuild')
-            # TODO: Replace placeholder URIs before publishing to PSGallery
-            LicenseUri   = 'https://github.com/TODO/Anvil/blob/main/LICENSE'
-            ProjectUri   = 'https://github.com/TODO/Anvil'
+            LicenseUri   = 'https://github.com/f0oster/Anvil/blob/main/LICENSE'
+            ProjectUri   = 'https://github.com/f0oster/Anvil'
             ReleaseNotes = ''
             Prerelease = ''
             ExternalModuleDependencies = @()
