@@ -96,7 +96,10 @@ foreach ($Mod in $Merged.GetEnumerator() | Sort-Object Key) {
 # Install
 $Specs = $Merged.GetEnumerator() | ForEach-Object { "$($_.Key)=$($_.Value)" }
 
-$Params = @{ Specification = $Specs }
+$Params = @{
+    Specification = $Specs
+    Destination   = 'CurrentUser'
+}
 if ($Update) { $Params['Update'] = $true }
 
 if ($Plan) {

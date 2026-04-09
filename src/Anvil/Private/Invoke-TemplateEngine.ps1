@@ -64,7 +64,7 @@ function Invoke-TemplateEngine {
     }
 
     # Process directories first (to create structure)
-    $Dirs = Get-ChildItem -Path $SourcePath -Directory -Recurse
+    $Dirs = Get-ChildItem -Path $SourcePath -Directory -Recurse -Force
     foreach ($Dir in $Dirs) {
         $RelativePath = $Dir.FullName.Substring($SourcePath.Length).TrimStart([IO.Path]::DirectorySeparatorChar, [IO.Path]::AltDirectorySeparatorChar)
         $ResolvedPath = Resolve-PathTokens -RelativePath $RelativePath -Tokens $Tokens
@@ -79,7 +79,7 @@ function Invoke-TemplateEngine {
         }
     }
 
-    $Files = Get-ChildItem -Path $SourcePath -File -Recurse
+    $Files = Get-ChildItem -Path $SourcePath -File -Recurse -Force
     $ProcessedCount = 0
 
     foreach ($File in $Files) {
