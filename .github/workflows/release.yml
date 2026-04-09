@@ -1,0 +1,45 @@
+# Release Pipeline -- Anvil
+# Triggered by version tags (v*).
+# Extracts the version from the tag and injects it via the build script.
+# Setup: add PSGALLERY_API_KEY as a repository secret.
+
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: read
+
+jobs:
+  release:
+    name: Build and Publish
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Extract version from tag
+        id: version
+        shell: pwsh
+        run: |
+          $Version = "${{ github.ref_name }}" -replace '^v', ''
+          Write-Host "Version: $Version"
+          "version=$Version" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+
+      - name: Bootstrap
+        shell: pwsh
+        run: ./build/bootstrap.ps1
+
+      - name: Release build
+        shell: pwsh
+        env:
+          PSGALLERY_API_KEY: ${{ secrets.PSGALLERY_API_KEY }}
+        run: Invoke-Build -File ./build/module.build.ps1 -Task Release -NewVersion '${{ steps.version.outputs.version }}'
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-package
+          path: ./artifacts/package/
+          if-no-files-found: error

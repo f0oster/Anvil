@@ -1,0 +1,74 @@
+# CI Pipeline -- Anvil
+
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Bootstrap (Build scope)
+        shell: pwsh
+        run: ./build/bootstrap.ps1 -Scope Build
+      - name: Lint
+        shell: pwsh
+        run: Invoke-Build -File ./build/module.build.ps1 -Task Lint
+
+  test:
+    name: 'Test (${{ matrix.os }})'
+    needs: lint
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Bootstrap
+        shell: pwsh
+        run: ./build/bootstrap.ps1
+      - name: Test
+        shell: pwsh
+        run: Invoke-Build -File ./build/module.build.ps1 -Task Test
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results-${{ matrix.os }}
+          path: ./artifacts/testResults/
+          if-no-files-found: warn
+
+  package:
+    name: Package
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Bootstrap
+        shell: pwsh
+        run: ./build/bootstrap.ps1
+      - name: Build
+        shell: pwsh
+        run: Invoke-Build -File ./build/module.build.ps1
+      - name: Upload package
+        uses: actions/upload-artifact@v4
+        with:
+          name: module-package
+          path: ./artifacts/package/
+          if-no-files-found: error
+      - name: Upload archive
+        uses: actions/upload-artifact@v4
+        with:
+          name: module-archive
+          path: ./artifacts/archive/
+          if-no-files-found: error
