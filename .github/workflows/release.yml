@@ -1,6 +1,6 @@
 # Release Pipeline -- Anvil
 # Triggered by version tags (v*).
-# Extracts the version from the tag and injects it via the build script.
+# Validates on all platforms, then publishes from Ubuntu.
 # Setup: add PSGALLERY_API_KEY as a repository secret.
 
 name: Release
@@ -10,17 +10,54 @@ on:
     tags: ['v*']
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
-  release:
-    name: Build and Publish
+  validate:
+    name: 'Validate (${{ matrix.os }})'
+    strategy:
+      fail-fast: true
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Extract and validate version
+        id: version
+        shell: pwsh
+        run: |
+          $Version = "${{ github.ref_name }}" -replace '^v', ''
+          if ($Version -notmatch '^\d+\.\d+\.\d+') {
+              throw "Invalid version format: '$Version'. Expected semver (e.g., 1.0.0)."
+          }
+          Write-Host "Version: $Version"
+
+      - name: Bootstrap
+        shell: pwsh
+        run: ./build/bootstrap.ps1
+
+      - name: Build
+        shell: pwsh
+        run: Invoke-Build -File ./build/module.build.ps1
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: validate-results-${{ matrix.os }}
+          path: ./artifacts/testResults/
+          if-no-files-found: warn
+
+  publish:
+    name: Publish
+    needs: validate
     runs-on: ubuntu-latest
     environment: production
     steps:
       - uses: actions/checkout@v5
 
-      - name: Extract version from tag
+      - name: Extract version
         id: version
         shell: pwsh
         run: |
@@ -32,14 +69,24 @@ jobs:
         shell: pwsh
         run: ./build/bootstrap.ps1
 
+      # To enable PSGallery publishing:
+      #   1. Add PSGALLERY_API_KEY as a repository secret
+      #   2. Uncomment the env block below
+      #   3. Change the run command to: Invoke-Build -File ./build/module.build.ps1 -Task Release -NewVersion '${{ steps.version.outputs.version }}'
       - name: Release build
         shell: pwsh
-        env:
-          PSGALLERY_API_KEY: ${{ secrets.PSGALLERY_API_KEY }}
-        run: Invoke-Build -File ./build/module.build.ps1 -Task Release -NewVersion '${{ steps.version.outputs.version }}'
+        # env:
+        #   PSGALLERY_API_KEY: ${{ secrets.PSGALLERY_API_KEY }}
+        run: Invoke-Build -File ./build/module.build.ps1 -NewVersion '${{ steps.version.outputs.version }}'
 
-      - uses: actions/upload-artifact@v6
+      - name: Upload release package
+        uses: actions/upload-artifact@v6
         with:
           name: release-package
           path: ./artifacts/package/
           if-no-files-found: error
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "${{ github.ref_name }}" ./artifacts/archive/*.zip --generate-notes
