@@ -20,7 +20,7 @@ jobs:
         os: [ubuntu-latest, windows-latest, macos-latest]
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Bootstrap
         shell: pwsh
         run: ./build/bootstrap.ps1
@@ -29,21 +29,21 @@ jobs:
         run: Invoke-Build -File ./build/module.build.ps1
       - name: Upload test results
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: test-results-${{ matrix.os }}
           path: ./artifacts/testResults/
           if-no-files-found: warn
       - name: Upload package
         if: matrix.os == 'ubuntu-latest'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: module-package
           path: ./artifacts/package/
           if-no-files-found: error
       - name: Upload archive
         if: matrix.os == 'ubuntu-latest'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: module-archive
           path: ./artifacts/archive/
