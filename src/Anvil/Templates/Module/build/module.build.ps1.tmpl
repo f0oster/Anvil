@@ -110,9 +110,8 @@ task Format {
 task Lint {
     Write-BuildHeader 'Lint (PSScriptAnalyzer)'
     $Params = @{
-        Path     = $script:ModuleDir
-        Recurse  = $true
-        Severity = @('Error', 'Warning')
+        Path    = $script:ModuleDir
+        Recurse = $true
     }
     $SettingsPath = Join-Path -Path $script:ProjectRoot -ChildPath 'PSScriptAnalyzerSettings.psd1'
     if (Test-Path -Path $SettingsPath) { $Params['Settings'] = $SettingsPath }
@@ -127,7 +126,10 @@ task Lint {
     $Results = Invoke-ScriptAnalyzer @Params
     if ($Results) {
         $Results | Format-Table -AutoSize
-        throw "PSScriptAnalyzer found $($Results.Count) issue(s)."
+        $Failures = $Results | Where-Object { $_.Severity -in 'Error', 'Warning' }
+        if ($Failures) {
+            throw "PSScriptAnalyzer found $($Failures.Count) issue(s)."
+        }
     }
     Write-BuildFooter 'No lint issues'
 }

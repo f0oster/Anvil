@@ -18,8 +18,15 @@ function $FunctionName {
 
     .EXAMPLE
         $FunctionName
+
+    .INPUTS
+        None
+
+    .OUTPUTS
+        TODO
     #>
     [CmdletBinding()]
+    [OutputType()]
     param(
     )
 

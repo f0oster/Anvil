@@ -18,7 +18,7 @@ jobs:
     runs-on: ubuntu-latest
     environment: production
     steps:
-      - uses: actions/checkout@<CHECKOUT_SHA>
+      - uses: actions/checkout@v4
 
       - name: Extract version from tag
         id: version
@@ -38,7 +38,7 @@ jobs:
           PSGALLERY_API_KEY: ${{ secrets.PSGALLERY_API_KEY }}
         run: Invoke-Build -File ./build/module.build.ps1 -Task Release -NewVersion '${{ steps.version.outputs.version }}'
 
-      - uses: actions/upload-artifact@<UPLOAD_SHA>
+      - uses: actions/upload-artifact@v4
         with:
           name: release-package
           path: ./artifacts/package/

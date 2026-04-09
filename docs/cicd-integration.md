@@ -44,22 +44,6 @@ The source `.psd1` is never modified. The version exists only in the CI workspac
 2. Add a secret named `PSGALLERY_API_KEY` with your PowerShell Gallery API key
 3. Optionally, create a `production` environment under **Settings > Environments** and add approval rules if you want manual release gates
 
-### SHA pinning
-
-The generated workflows use placeholder SHAs for GitHub Actions:
-
-```yaml
-- uses: actions/checkout@<CHECKOUT_SHA>
-```
-
-Replace these with actual commit SHAs from the action repositories. Using SHAs instead of version tags protects against supply chain attacks where a compromised action tag points to malicious code. You can find current SHAs on each action's releases page.
-
-### Troubleshooting
-
-**Bootstrap fails in CI.** ModuleFast downloads modules from the PowerShell Gallery. If the Gallery is down or rate-limiting, bootstrap will fail. This is transient — retry the workflow.
-
-**Tests pass locally but fail in CI.** Check the OS. The CI workflow runs on `ubuntu-latest` by default. Path separators, case sensitivity, and available commands differ between Windows and Linux. Use `Join-Path` consistently (never backslash concatenation) and avoid OS-specific assumptions.
-
 ## Azure Pipelines
 
 ### Generated files
