@@ -87,11 +87,10 @@ function New-AnvilModule {
         Returns the full path of the generated project directory as a string.
 
     .INPUTS
-        None. This command does not accept pipeline input.
+        None
 
     .OUTPUTS
         System.String
-            The project directory path, returned only when -PassThru is used.
 
     .EXAMPLE
         New-AnvilModule

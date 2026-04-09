@@ -46,7 +46,7 @@ Describe 'Resolve-PathTokens' -Tag 'Unit' {
 
 Describe 'Resolve-ContentTokens' -Tag 'Unit' {
 
-    It 'replaces <%ModuleName%> in content' {
+    It 'replaces content token placeholders' {
         InModuleScope 'Anvil' {
             $Result = Resolve-ContentTokens -Content 'Module = <%ModuleName%>' -Tokens @{ ModuleName = 'Baz' }
             $Result | Should -Be 'Module = Baz'

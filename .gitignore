@@ -1,12 +1,16 @@
 artifacts/
+**/en-US/
 *.zip
 *.nupkg
 .vscode/*
 !.vscode/settings.json
 !.vscode/tasks.json
 !.vscode/extensions.json
+*.code-workspace
 coverage.xml
 .DS_Store
 Thumbs.db
+Desktop.ini
+PSModulePath/
 *.secret
 .env

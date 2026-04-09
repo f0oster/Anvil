@@ -1,0 +1,45 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "Bootstrap",
+            "type": "shell",
+            "command": "pwsh",
+            "args": ["-File", "${workspaceFolder}/build/bootstrap.ps1"],
+            "group": "build",
+            "problemMatcher": []
+        },
+        {
+            "label": "Build (Full Pipeline)",
+            "type": "shell",
+            "command": "pwsh",
+            "args": ["-Command", "Invoke-Build -File '${workspaceFolder}/build/module.build.ps1'"],
+            "group": { "kind": "build", "isDefault": true },
+            "problemMatcher": []
+        },
+        {
+            "label": "Lint",
+            "type": "shell",
+            "command": "pwsh",
+            "args": ["-Command", "Invoke-Build -File '${workspaceFolder}/build/module.build.ps1' -Task Lint"],
+            "group": "build",
+            "problemMatcher": []
+        },
+        {
+            "label": "Test",
+            "type": "shell",
+            "command": "pwsh",
+            "args": ["-Command", "Invoke-Build -File '${workspaceFolder}/build/module.build.ps1' -Task Test"],
+            "group": "test",
+            "problemMatcher": []
+        },
+        {
+            "label": "Coverage (DevCC)",
+            "type": "shell",
+            "command": "pwsh",
+            "args": ["-Command", "Invoke-Build -File '${workspaceFolder}/build/module.build.ps1' -Task DevCC"],
+            "group": "test",
+            "problemMatcher": []
+        }
+    ]
+}

@@ -36,6 +36,12 @@ function New-AnvilClass {
 
     .EXAMPLE
         New-AnvilClass -ClassName 'HttpClient' -Path C:\Projects\MyModule
+
+    .INPUTS
+        None
+
+    .OUTPUTS
+        System.IO.FileInfo
     #>
     [CmdletBinding(SupportsShouldProcess)]
     param(

@@ -42,6 +42,12 @@ function New-AnvilTest {
 
     .EXAMPLE
         New-AnvilTest -Name 'Get-Widget' -Scope Public -Location 'Core/Greetings'
+
+    .INPUTS
+        None
+
+    .OUTPUTS
+        System.IO.FileInfo
     #>
     [CmdletBinding(SupportsShouldProcess)]
     param(

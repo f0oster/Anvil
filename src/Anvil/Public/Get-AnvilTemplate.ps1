@@ -12,12 +12,13 @@ function Get-AnvilTemplate {
         Format-Table or use -InformationAction Continue to see it.
 
     .INPUTS
-        None.  This command does not accept pipeline input.
+        None
 
     .OUTPUTS
-        PSCustomObject
-            Objects with Name, Type ('BaseTemplate' or 'CIProvider'),
-            FileCount, and Path properties.
+        System.Management.Automation.PSCustomObject
+
+    .LINK
+        New-AnvilModule
 
     .EXAMPLE
         Get-AnvilTemplate

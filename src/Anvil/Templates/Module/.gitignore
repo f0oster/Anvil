@@ -1,4 +1,5 @@
 artifacts/
+**/en-US/
 *.zip
 *.nupkg
 .vscode/*

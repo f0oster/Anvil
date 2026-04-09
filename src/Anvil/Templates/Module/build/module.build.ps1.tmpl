@@ -158,38 +158,35 @@ task Test {
 }
 
 task Docs {
-    Write-BuildHeader 'Documentation (Microsoft.PowerShell.PlatyPS)'
+    Write-BuildHeader 'Documentation (platyPS)'
 
-    $PlatyModule = 'Microsoft.PowerShell.PlatyPS'
-    if (-not (Get-Module -ListAvailable -Name $PlatyModule -ErrorAction SilentlyContinue)) {
-        Write-Build Yellow "  $PlatyModule not installed -- skipping docs generation"
+    if (-not (Get-Module -ListAvailable -Name 'platyPS' -ErrorAction SilentlyContinue)) {
+        Write-Build Yellow '  platyPS not installed -- skipping docs generation'
         return
     }
-    Import-Module $PlatyModule -ErrorAction Stop
+    Import-Module platyPS -ErrorAction Stop
     Import-Module $script:ManifestPath -Force -ErrorAction Stop
 
-    $MdDir = Join-Path -Path $script:DocsDir -ChildPath 'cmdlets'
-    if (-not (Test-Path -Path $MdDir)) {
-        New-Item -Path $MdDir -ItemType Directory -Force | Out-Null
-    }
+    $MdDir = Join-Path -Path $script:DocsDir -ChildPath 'commands'
+    $ExistingDocs = Get-ChildItem -Path $MdDir -Filter '*.md' -Recurse -ErrorAction SilentlyContinue
 
-    $ModInfo = Get-Module -Name $script:ModuleName
-    New-MarkdownCommandHelp -ModuleInfo $ModInfo -OutputFolder $MdDir -Force | Out-Null
+    if ($ExistingDocs) {
+        Update-MarkdownHelp -Path $MdDir | Out-Null
+        Write-Build White "  Updated $($ExistingDocs.Count) existing doc(s)"
+    } else {
+        if (-not (Test-Path -Path $MdDir)) {
+            New-Item -Path $MdDir -ItemType Directory -Force | Out-Null
+        }
+        New-MarkdownHelp -Module $script:ModuleName -OutputFolder $MdDir -Force | Out-Null
+        Write-Build White '  Generated initial documentation'
+    }
 
     # Export to MAML for Get-Help
     $HelpDir = Join-Path -Path $script:ModuleDir -ChildPath 'en-US'
     if (-not (Test-Path -Path $HelpDir)) {
         New-Item -Path $HelpDir -ItemType Directory -Force | Out-Null
     }
-
-    $MdFiles = Measure-PlatyPSMarkdown -Path (Join-Path -Path $MdDir -ChildPath '*.md')
-    $CmdHelp = $MdFiles |
-        Where-Object { $_.Filetype -match 'CommandHelp' } |
-        Import-MarkdownCommandHelp -Path { $_.FilePath }
-
-    if ($CmdHelp) {
-        $CmdHelp | Export-MamlCommandHelp -OutputFolder $HelpDir -Force | Out-Null
-    }
+    New-ExternalHelp -Path $MdDir -OutputPath $HelpDir -Force | Out-Null
 
     Write-BuildFooter 'Docs generation complete'
 }
@@ -201,7 +198,7 @@ task Build {
     New-Item -Path $Staging -ItemType Directory -Force | Out-Null
 
     # Copy static assets
-    foreach ($AssetDir in @('en-US', 'Types', 'Formats', 'Assemblies')) {
+    foreach ($AssetDir in @('Types', 'Formats', 'Assemblies')) {
         $AssetPath = Join-Path -Path $script:ModuleDir -ChildPath $AssetDir
         if (Test-Path -Path $AssetPath) {
             Copy-Item -Path $AssetPath -Destination (Join-Path -Path $Staging -ChildPath $AssetDir) -Recurse
@@ -282,6 +279,15 @@ task Build {
     if ($PSData.ExternalModuleDependencies)    { $ManifestParams.ExternalModuleDependencies = $PSData.ExternalModuleDependencies }
 
     New-ModuleManifest @ManifestParams
+
+    # Generate MAML help from markdown docs
+    $MdDir = Join-Path -Path $script:DocsDir -ChildPath 'commands'
+    if ((Test-Path -Path $MdDir) -and (Get-Module -ListAvailable -Name 'platyPS' -ErrorAction SilentlyContinue)) {
+        Import-Module platyPS -ErrorAction Stop
+        $HelpDir = Join-Path -Path $Staging -ChildPath 'en-US'
+        New-ExternalHelp -Path $MdDir -OutputPath $HelpDir -Force | Out-Null
+        Write-Build White '  Generated MAML help'
+    }
 
     Write-Build White "  Compiled $($PublicFunctions.Count) public + private functions into .psm1"
     Write-BuildFooter 'Build complete'

@@ -20,6 +20,6 @@
     }
 
     Docs = @{
-        'Microsoft.PowerShell.PlatyPS' = '1.0.1'
+        'platyPS' = '0.14.2'
     }
 }

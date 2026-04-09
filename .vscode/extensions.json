@@ -1,0 +1,8 @@
+{
+    "recommendations": [
+        "ms-vscode.powershell",
+        "DavidAnson.vscode-markdownlint",
+        "editorconfig.editorconfig",
+        "ryanluker.vscode-coverage-gutters"
+    ]
+}

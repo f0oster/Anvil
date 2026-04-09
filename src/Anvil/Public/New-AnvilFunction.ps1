@@ -52,6 +52,12 @@ function New-AnvilFunction {
 
     .EXAMPLE
         New-AnvilFunction -FunctionName 'Fetch-Data' -Scope Public -SkipVerbCheck
+
+    .INPUTS
+        None
+
+    .OUTPUTS
+        System.IO.FileInfo
     #>
     [CmdletBinding(SupportsShouldProcess)]
     param(

@@ -8,7 +8,7 @@
     spec, and hands it to ModuleFast for installation.
 
     NOTE: This script requires PowerShell 7.2+ because ModuleFast does.
-    The module itself targets 5.1 at runtime, but building and testing
+    The module itself may target 5.1 at runtime, but building and testing
     always requires 7.2 or later.
 
     The requirements file groups modules by purpose (Build, Test, Docs, or
