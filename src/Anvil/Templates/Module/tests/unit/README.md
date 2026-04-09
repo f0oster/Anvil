@@ -7,6 +7,9 @@ Unit tests validate your module's source code directly. They import the module f
 ```
 tests/unit/
     YourModule.Module.Tests.ps1   # Module-level tests (manifest, imports, exports)
+    PrivateClasses/               # One test file per class
+        README.md
+        GreetingBuilder.Tests.ps1
     Public/                       # One test file per public function
         README.md
         Get-Greeting.Tests.ps1

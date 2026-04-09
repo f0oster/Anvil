@@ -4,8 +4,9 @@ function Format-GreetingText {
         Formats a greeting string.
 
     .DESCRIPTION
-        Sample private function demonstrating the helper pattern.  Private
-        functions are dot-sourced at import time but not exported.
+        Sample private function demonstrating the helper pattern.  Uses the
+        GreetingBuilder class from PrivateClasses/ to show how functions can
+        depend on classes.  Private functions are not exported.
     #>
     [CmdletBinding()]
     [OutputType([string])]
@@ -14,5 +15,6 @@ function Format-GreetingText {
         [string]$Name
     )
 
-    "Hello, $Name!"
+    $Builder = [GreetingBuilder]::new()
+    $Builder.Build($Name)
 }

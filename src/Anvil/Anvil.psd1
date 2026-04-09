@@ -18,6 +18,7 @@
         'Get-AnvilTemplate'
         'New-AnvilTest'
         'New-AnvilFunction'
+        'New-AnvilClass'
     )
     CmdletsToExport   = @()
     VariablesToExport  = @()

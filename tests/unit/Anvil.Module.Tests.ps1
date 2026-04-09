@@ -68,6 +68,7 @@ Describe 'Module: Anvil' -Tag 'Unit' {
             $Exported | Should -Not -Contain 'Test-Excluded'
             $Exported | Should -Not -Contain 'Get-TestContent'
             $Exported | Should -Not -Contain 'Get-FunctionContent'
+            $Exported | Should -Not -Contain 'Get-ClassContent'
         }
     }
 

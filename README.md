@@ -40,8 +40,12 @@ New-AnvilFunction -FunctionName 'Get-Widget' -Scope Public
 # Create a private function in a subdirectory
 New-AnvilFunction -FunctionName 'Format-Row' -Scope Private -Location 'Helpers'
 
-# Create just a test file for an existing function
-New-AnvilTest -FunctionName 'Get-Widget' -Scope Public
+# Create a private class and its test file
+New-AnvilClass -ClassName 'HttpClient'
+
+# Create just a test file for an existing function or class
+New-AnvilTest -Name 'Get-Widget' -Scope Public
+New-AnvilTest -Name 'HttpClient' -Scope PrivateClasses
 ```
 
 `New-AnvilFunction` validates that public function names use an [approved PowerShell verb](https://learn.microsoft.com/en-us/powershell/scripting/developer/cmdlet/approved-verbs-for-windows-powershell-commands). Use `-SkipVerbCheck` to override this.

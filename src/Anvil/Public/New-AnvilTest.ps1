@@ -1,22 +1,22 @@
 function New-AnvilTest {
     <#
     .SYNOPSIS
-        Creates a new Pester 5 test file for a function in an Anvil-scaffolded module.
+        Creates a new Pester 5 test file in an Anvil-scaffolded module.
 
     .DESCRIPTION
-        Generates a test file with the correct boilerplate for testing a public or
-        private function.  The file is placed in the appropriate tests/unit/Public/
-        or tests/unit/Private/ directory based on the -Scope parameter.
+        Generates a test file with the correct boilerplate for testing a public
+        function, private function, or private class.  The file is placed in the
+        appropriate tests/unit/<Scope>/ directory.
 
         The module name is read from build/build.settings.psd1 in the project root.
 
-    .PARAMETER FunctionName
-        The name of the function to test.  The generated file will be named
-        <FunctionName>.Tests.ps1.
+    .PARAMETER Name
+        The name of the function or class to test.  The generated file will
+        be named <Name>.Tests.ps1.
 
     .PARAMETER Scope
-        Whether the function is Public (exported) or Private (internal).
-        Determines the output directory and whether InModuleScope is used.
+        Whether the target is Public, Private, or PrivateClasses.
+        Determines the output directory and the test pattern used.
 
     .PARAMETER Location
         Optional subdirectory path relative to the scope root.  For example,
@@ -32,22 +32,25 @@ function New-AnvilTest {
         Overwrite the test file if it already exists.
 
     .EXAMPLE
-        New-AnvilTest -FunctionName 'Get-Widget' -Scope Public
+        New-AnvilTest -Name 'Get-Widget' -Scope Public
 
     .EXAMPLE
-        New-AnvilTest -FunctionName 'Resolve-InternalState' -Scope Private -Path C:\Projects\MyModule
+        New-AnvilTest -Name 'Resolve-InternalState' -Scope Private -Path C:\Projects\MyModule
 
     .EXAMPLE
-        New-AnvilTest -FunctionName 'Get-Widget' -Scope Public -Location 'Core/Greetings'
+        New-AnvilTest -Name 'GreetingBuilder' -Scope PrivateClasses
+
+    .EXAMPLE
+        New-AnvilTest -Name 'Get-Widget' -Scope Public -Location 'Core/Greetings'
     #>
     [CmdletBinding(SupportsShouldProcess)]
     param(
         [Parameter(Mandatory)]
         [ValidateNotNullOrEmpty()]
-        [string]$FunctionName,
+        [string]$Name,
 
         [Parameter(Mandatory)]
-        [ValidateSet('Public', 'Private')]
+        [ValidateSet('Public', 'Private', 'PrivateClasses')]
         [string]$Scope,
 
         [Parameter()]
@@ -111,7 +114,7 @@ function New-AnvilTest {
     if ($Location) {
         $TestDir = Join-Path $TestDir $Location
     }
-    $TestFile = Join-Path $TestDir "$FunctionName.Tests.ps1"
+    $TestFile = Join-Path $TestDir "$Name.Tests.ps1"
 
     if ((Test-Path $TestFile) -and -not $Force) {
         Write-Error "Test file already exists: $TestFile. Use -Force to overwrite."
@@ -120,9 +123,9 @@ function New-AnvilTest {
 
     # Generate test content
     $ContentParams = @{
-        FunctionName = $FunctionName
-        ModuleName   = $ModuleName
-        Scope        = $Scope
+        Name       = $Name
+        ModuleName = $ModuleName
+        Scope      = $Scope
     }
     $Content = Get-TestContent @ContentParams
 

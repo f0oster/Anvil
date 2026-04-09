@@ -159,9 +159,9 @@ function New-AnvilFunction {
 
     # Create the matching test file
     $TestParams = @{
-        FunctionName = $FunctionName
-        Scope        = $Scope
-        Path         = $ProjectRoot
+        Name  = $FunctionName
+        Scope = $Scope
+        Path  = $ProjectRoot
     }
     if ($Location) { $TestParams.Location = $Location }
     if ($Force) { $TestParams.Force = $true }

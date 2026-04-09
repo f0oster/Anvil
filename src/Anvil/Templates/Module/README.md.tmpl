@@ -18,6 +18,8 @@ Invoke-Build -File ./build/module.build.ps1
 ├── src/<%ModuleName%>/        Module source
 │   ├── <%ModuleName%>.psd1    Manifest (runtime deps only)
 │   ├── <%ModuleName%>.psm1    Entry point
+│   ├── Imports.ps1            Module-scoped variables and initialization
+│   ├── PrivateClasses/        PowerShell classes (loaded before functions)
 │   ├── Public/                Exported functions
 │   └── Private/               Internal helpers
 ├── build/

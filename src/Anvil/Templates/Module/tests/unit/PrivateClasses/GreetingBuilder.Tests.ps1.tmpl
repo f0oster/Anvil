@@ -1,0 +1,76 @@
+#Requires -Modules @{ ModuleName = 'Pester'; ModuleVersion = '5.0.0' }
+
+BeforeAll {
+    $ProjectRoot = $PSScriptRoot
+    while ($ProjectRoot -and -not (Test-Path (Join-Path $ProjectRoot 'build/build.settings.psd1'))) {
+        $ProjectRoot = Split-Path $ProjectRoot -Parent
+    }
+    $ModuleName   = '<%ModuleName%>'
+    $ModuleDir    = Join-Path -Path $ProjectRoot -ChildPath 'src' | Join-Path -ChildPath $ModuleName
+    $ManifestPath = Join-Path -Path $ModuleDir -ChildPath "$ModuleName.psd1"
+
+    Get-Module -Name $ModuleName -ErrorAction SilentlyContinue | Remove-Module -Force
+    Import-Module $ManifestPath -Force -ErrorAction Stop
+}
+
+AfterAll {
+    Get-Module -Name '<%ModuleName%>' -ErrorAction SilentlyContinue | Remove-Module -Force
+}
+
+Describe 'GreetingBuilder' -Tag 'Unit' {
+
+    Context 'Default constructor' {
+        It 'uses Hello as the default prefix' {
+            InModuleScope '<%ModuleName%>' {
+                $Builder = [GreetingBuilder]::new()
+                $Builder.Prefix | Should -Be 'Hello'
+            }
+        }
+
+        It 'uses ! as the default suffix' {
+            InModuleScope '<%ModuleName%>' {
+                $Builder = [GreetingBuilder]::new()
+                $Builder.Suffix | Should -Be '!'
+            }
+        }
+    }
+
+    Context 'Parameterized constructor' {
+        It 'accepts a custom prefix and suffix' {
+            InModuleScope '<%ModuleName%>' {
+                $Builder = [GreetingBuilder]::new('Hi', '.')
+                $Builder.Prefix | Should -Be 'Hi'
+                $Builder.Suffix | Should -Be '.'
+            }
+        }
+    }
+
+    Context 'Build method' {
+        It 'returns a greeting with the default settings' {
+            InModuleScope '<%ModuleName%>' {
+                $Builder = [GreetingBuilder]::new()
+                $Builder.Build('World') | Should -Be 'Hello, World!'
+            }
+        }
+
+        It 'returns a greeting with custom prefix and suffix' {
+            InModuleScope '<%ModuleName%>' {
+                $Builder = [GreetingBuilder]::new('Hey', '?')
+                $Builder.Build('Alice') | Should -Be 'Hey, Alice?'
+            }
+        }
+    }
+
+    Context 'ToString method' {
+        It 'returns a summary of the builder' {
+            InModuleScope '<%ModuleName%>' {
+                $Builder = [GreetingBuilder]::new('Hi', '!')
+                $Builder.ToString() | Should -Be 'Hi...!'
+            }
+        }
+    }
+
+    It 'is not accessible outside the module' {
+        { [GreetingBuilder]::new() } | Should -Throw
+    }
+}

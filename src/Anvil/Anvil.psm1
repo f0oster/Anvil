@@ -4,20 +4,25 @@
     Module loader for Anvil.
 
 .DESCRIPTION
-    Dot-sources all Public and Private .ps1 files and sets the script-scoped
-    template resource path.
+    Dot-sources Imports.ps1 for module-scoped variables, then loads all
+    Public and Private .ps1 files and exports only the Public functions.
 #>
 
-# Template resource root (used by scaffolding commands)
-$script:TemplateRoot = Join-Path -Path $PSScriptRoot -ChildPath 'Templates'
+# Module-scoped variables and initialization
+. $PSScriptRoot\Imports.ps1
 
-# Discover and dot-source function files
+# Discover and dot-source files
+$PrivateClassesDir = Join-Path -Path $PSScriptRoot -ChildPath 'PrivateClasses'
 $PublicDir = Join-Path -Path $PSScriptRoot -ChildPath 'Public'
 $PrivateDir = Join-Path -Path $PSScriptRoot -ChildPath 'Private'
 
+$PrivateClasses = @()
 $PublicFunctions = @()
 $PrivateFunctions = @()
 
+if (Test-Path -Path $PrivateClassesDir) {
+    $PrivateClasses = @(Get-ChildItem -Path $PrivateClassesDir -Filter '*.ps1' -Recurse -ErrorAction SilentlyContinue)
+}
 if (Test-Path -Path $PublicDir) {
     $PublicFunctions = @(Get-ChildItem -Path $PublicDir -Filter '*.ps1' -Recurse -ErrorAction SilentlyContinue)
 }
@@ -25,7 +30,8 @@ if (Test-Path -Path $PrivateDir) {
     $PrivateFunctions = @(Get-ChildItem -Path $PrivateDir -Filter '*.ps1' -Recurse -ErrorAction SilentlyContinue)
 }
 
-foreach ($File in @($PublicFunctions + $PrivateFunctions)) {
+# Classes first, then functions (functions may depend on classes)
+foreach ($File in @($PrivateClasses + $PublicFunctions + $PrivateFunctions)) {
     try {
         . $File.FullName
     } catch {
