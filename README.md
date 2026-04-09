@@ -78,6 +78,10 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup and guidelines.
 
 [MIT](LICENSE)
 
+## Acknowledgements
+
+Heavily inspired by [Catesta](https://github.com/techthoughts2/Catesta).
+
 <!-- Badge links -->
 [ci-badge]: https://github.com/f0oster/Anvil/actions/workflows/ci.yml/badge.svg?branch=main
 [ci-link]: https://github.com/f0oster/Anvil/actions/workflows/ci.yml
