@@ -1,6 +1,22 @@
 # Anvil
 
-An opinionated PowerShell module scaffolder for people who don't want to wire up build pipelines by hand.
+[![CI][ci-badge]][ci-link]
+[![License][license-badge]][license-link]
+
+Scaffold production-grade PowerShell module projects with opinionated build, test, lint, and CI/CD pipelines — so you can start writing code, not boilerplate.
+
+> **Note:** Anvil is in early development. Expect breaking changes, incomplete features, and rough edges. Not yet published to the PowerShell Gallery.
+
+## Features
+
+- Scaffold a complete module project from a single command
+- InvokeBuild pipeline: lint, test, build, package, publish
+- Pester 5 test infrastructure with code coverage enforcement
+- PSScriptAnalyzer linting with custom rules
+- CI/CD workflows for GitHub Actions, Azure Pipelines, and GitLab CI
+- Optional platyPS documentation generation
+- Zero runtime dependencies — build tools bootstrapped via [ModuleFast](https://github.com/JustinGrote/ModuleFast)
+- Target PowerShell 5.1+ at runtime while building on 7.2+
 
 ## Installation
 
@@ -8,11 +24,11 @@ An opinionated PowerShell module scaffolder for people who don't want to wire up
 Install-Module -Name Anvil -Scope CurrentUser
 ```
 
-## Usage
+## Quick Start
+
+### Scaffold a new module
 
 ```powershell
-Import-Module Anvil
-
 $Params = @{
     Name            = 'NetworkTools'
     DestinationPath = '~/Projects'
@@ -23,52 +39,47 @@ $Params = @{
 New-AnvilModule @Params
 ```
 
-This creates a `NetworkTools/` directory with module source, build scripts, tests, CI workflows, and everything needed to start developing immediately. Run `./build/bootstrap.ps1` then `Invoke-Build` to build it.
+Or run `New-AnvilModule` with no parameters for an interactive wizard.
 
-`New-AnvilModule` accepts parameters for CI provider (`GitHub`, `AzurePipelines`, `GitLab`, `None`), license type (`MIT`, `Apache2`, `None`), coverage threshold, minimum PowerShell version, and whether to include platyPS documentation generation. Use `Get-Help New-AnvilModule -Full` for the complete list.
-
-`Get-AnvilTemplate` lists the available templates and CI providers shipped with the module.
-
-### After scaffolding
-
-Anvil also provides commands for working inside a scaffolded project:
+### Build it
 
 ```powershell
-# Create a public function and its test file
-New-AnvilFunction -FunctionName 'Get-Widget' -Scope Public
-
-# Create a private function in a subdirectory
-New-AnvilFunction -FunctionName 'Format-Row' -Scope Private -Location 'Helpers'
-
-# Create a private class and its test file
-New-AnvilClass -ClassName 'HttpClient'
-
-# Create just a test file for an existing function or class
-New-AnvilTest -Name 'Get-Widget' -Scope Public
-New-AnvilTest -Name 'HttpClient' -Scope PrivateClasses
-```
-
-`New-AnvilFunction` validates that public function names use an [approved PowerShell verb](https://learn.microsoft.com/en-us/powershell/scripting/developer/cmdlet/approved-verbs-for-windows-powershell-commands). Use `-SkipVerbCheck` to override this.
-
-Both commands auto-detect the project root by walking up the directory tree from your current location. Pass `-Path` to specify it explicitly.
-
-## What gets generated
-
-The scaffolded project follows a `src/` + `build/` + `tests/` layout. During development, the `.psm1` dot-sources individual files from `Public/` and `Private/`. At build time, InvokeBuild compiles them into a single `.psm1` for faster module loading.
-
-The build pipeline runs: Clean, Validate, Lint, Test, Build, IntegrationTest, Package. A separate `Release` task publishes to PSGallery. CI templates include both a PR/push pipeline and a tag-triggered release workflow.
-
-Dependencies are managed via [ModuleFast](https://github.com/JustinGrote/ModuleFast) with a scoped `build.requires.psd1` manifest. Build tooling and runtime dependencies are kept strictly separate. Building requires PowerShell 7.2+, but the generated module can target any version.
-
-## Development
-
-```powershell
-git clone git@github.com:f0oster/Anvil.git
-cd Anvil
+cd ~/Projects/NetworkTools
 ./build/bootstrap.ps1
 Invoke-Build -File ./build/module.build.ps1
 ```
 
+### Add functions and classes
+
+```powershell
+New-AnvilFunction -FunctionName 'Get-Widget' -Scope Public
+New-AnvilFunction -FunctionName 'Format-Row' -Scope Private
+New-AnvilClass -ClassName 'HttpClient'
+New-AnvilTest -Name 'Get-Widget' -Scope Public
+```
+
+## Documentation
+
+Full documentation is available in the [docs](docs/) directory:
+
+- [Getting Started](docs/getting-started.md) - step-by-step guide
+- [Project Structure](docs/project-structure.md) - what gets generated and why
+- [Build Pipeline](docs/build-pipeline.md) - task reference and customization
+- [CI/CD Integration](docs/cicd-integration.md) - GitHub Actions, Azure Pipelines, GitLab CI
+- [Customization](docs/customization.md) - classes, custom analyzers, types, formats
+- [FAQ](docs/faq.md) - common questions and troubleshooting
+- [Command Reference](docs/commands/) - detailed help for all commands
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup and guidelines.
+
 ## License
 
-MIT
+[MIT](LICENSE)
+
+<!-- Badge links -->
+[ci-badge]: https://github.com/f0oster/Anvil/actions/workflows/ci.yml/badge.svg?branch=main
+[ci-link]: https://github.com/f0oster/Anvil/actions/workflows/ci.yml
+[license-badge]: https://img.shields.io/badge/license-MIT-blue
+[license-link]: https://github.com/f0oster/Anvil/blob/main/LICENSE
