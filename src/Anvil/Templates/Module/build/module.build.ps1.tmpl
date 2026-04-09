@@ -6,7 +6,7 @@
 .DESCRIPTION
     Task graph:
         . (default)  ->  Clean, Validate, Format, Lint, Test, [Docs,] Build, IntegrationTest, Package
-        Release      ->  . + Publish
+        Release      ->  Version + . + Publish
         DevCC        ->  generate Coverage Gutters output for VS Code
 
     Invoke with:
@@ -247,7 +247,7 @@ task Build {
     $ManifestParams = @{
         Path              = Join-Path -Path $Staging -ChildPath "$($script:ModuleName).psd1"
         RootModule        = "$($script:ModuleName).psm1"
-        ModuleVersion     = $SourceManifest.ModuleVersion
+        ModuleVersion     = if ($NewVersion) { $NewVersion } else { $SourceManifest.ModuleVersion }
         Guid              = $SourceManifest.GUID
         Author            = $SourceManifest.Author
         CompanyName       = $SourceManifest.CompanyName
@@ -274,7 +274,11 @@ task Build {
     if ($PSData.LicenseUri)                    { $ManifestParams.LicenseUri = $PSData.LicenseUri }
     if ($PSData.ProjectUri)                    { $ManifestParams.ProjectUri = $PSData.ProjectUri }
     if ($PSData.ReleaseNotes)                  { $ManifestParams.ReleaseNotes = $PSData.ReleaseNotes }
-    if ($PSData.Prerelease)                    { $ManifestParams.Prerelease = $PSData.Prerelease }
+    if ($Prerelease) {
+        $ManifestParams.Prerelease = $Prerelease
+    } elseif ($PSData.Prerelease) {
+        $ManifestParams.Prerelease = $PSData.Prerelease
+    }
     if ($PSData.ExternalModuleDependencies)    { $ManifestParams.ExternalModuleDependencies = $PSData.ExternalModuleDependencies }
 
     New-ModuleManifest @ManifestParams
@@ -317,22 +321,15 @@ task Package {
 task Version {
     Write-BuildHeader 'Version'
     $Manifest = Test-ModuleManifest -Path $script:ManifestPath -ErrorAction Stop
-    Write-Build White "  Current: $($Manifest.Version)"
-
+    Write-Build White "  Source: $($Manifest.Version)"
     if ($NewVersion) {
-        Update-ModuleManifest -Path $script:ManifestPath -ModuleVersion $NewVersion
-        Write-Build Green "  Updated version: $NewVersion"
+        Write-Build Green "  Build will use: $NewVersion"
     }
-    if ($PSBoundParameters.ContainsKey('Prerelease')) {
-        Update-ModuleManifest -Path $script:ManifestPath -Prerelease $Prerelease
-        if ($Prerelease) {
-            Write-Build Green "  Updated prerelease: $Prerelease"
-        } else {
-            Write-Build Green '  Cleared prerelease label'
-        }
+    if ($Prerelease) {
+        Write-Build Green "  Prerelease: $Prerelease"
     }
-    if (-not $NewVersion -and -not $PSBoundParameters.ContainsKey('Prerelease')) {
-        Write-Build DarkGray '  Pass -NewVersion and/or -Prerelease to update'
+    if (-not $NewVersion -and -not $Prerelease) {
+        Write-Build DarkGray '  No -NewVersion or -Prerelease provided. Build will use source version.'
     }
     Write-BuildFooter 'Version task complete'
 }
@@ -343,8 +340,13 @@ task Publish {
     if (-not $ApiKey) { throw 'PSGALLERY_API_KEY not set.' }
     $Staging = Join-Path -Path $script:PackageDir -ChildPath $script:ModuleName
     Assert-FileExists -Path $Staging -Description 'Staged module'
+    $StagedManifest = Join-Path -Path $Staging -ChildPath "$($script:ModuleName).psd1"
+    $ManifestInfo = Test-ModuleManifest -Path $StagedManifest -ErrorAction Stop
+    if ($ManifestInfo.Version -eq [Version]'0.0.0') {
+        throw "Cannot publish placeholder version 0.0.0. Pass -NewVersion to inject a release version: Invoke-Build -Task Release -NewVersion 1.0.0"
+    }
     Publish-Module -Path $Staging -NuGetApiKey $ApiKey -ErrorAction Stop
-    Write-BuildFooter 'Published'
+    Write-BuildFooter "Published v$($ManifestInfo.Version)"
 }
 
 task DevCC {
@@ -371,4 +373,4 @@ task DevCC {
 
 # Composite tasks
 task . <%DefaultTasks%>
-task Release ., Publish
+task Release Version, ., Publish

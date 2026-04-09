@@ -2,6 +2,7 @@ stages:
   - lint
   - test
   - package
+  - publish
 
 variables:
   PESTER_OUTPUT_FORMAT: JUnitXml
@@ -53,3 +54,15 @@ package:
     paths:
       - artifacts/package/
       - artifacts/archive/
+
+publish:
+  <<: *pwsh_defaults
+  stage: publish
+  rules:
+    - if: $CI_COMMIT_TAG =~ /^v/
+  script:
+    - |
+      $Version = $env:CI_COMMIT_TAG -replace '^v', ''
+      pwsh -Command "Invoke-Build -File ./build/module.build.ps1 -Task Release -NewVersion '$Version'"
+  environment:
+    name: production

@@ -1,6 +1,6 @@
 @{
     RootModule        = 'Anvil.psm1'
-    ModuleVersion     = '0.1.0'
+    ModuleVersion     = '0.0.0'
     GUID              = '3a2b1c4d-5e6f-7a8b-9c0d-1e2f3a4b5c6d'
     # TODO: Replace placeholder values before publishing to PSGallery
     Author            = 'TODO'

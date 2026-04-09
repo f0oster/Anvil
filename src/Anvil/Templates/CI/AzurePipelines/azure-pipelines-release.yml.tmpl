@@ -1,5 +1,6 @@
-# Release Pipeline — <%ModuleName%>
+# Release Pipeline -- <%ModuleName%>
 # Triggered by version tags (v*).
+# Extracts the version from the tag and injects it via the build script.
 # Setup: add PSGALLERY_API_KEY as a pipeline variable (secret).
 
 trigger:
@@ -12,65 +13,45 @@ pr: none
 pool:
   vmImage: 'ubuntu-latest'
 
-stages:
-  - stage: CI
-    displayName: 'CI Gate'
-    jobs:
-      - job: Build
-        steps:
-          - task: PowerShell@2
-            displayName: 'Bootstrap'
-            inputs:
-              targetType: filePath
-              filePath: ./build/bootstrap.ps1
-              pwsh: true
-          - task: PowerShell@2
-            displayName: 'Full build'
-            inputs:
-              targetType: inline
-              script: Invoke-Build -File ./build/module.build.ps1
-              pwsh: true
-          - task: PublishTestResults@2
-            displayName: 'Publish test results'
-            condition: always()
-            inputs:
-              testResultsFormat: NUnit
-              testResultsFiles: '**/unit-results.xml'
-              searchFolder: ./artifacts/testResults
-          - publish: ./artifacts/package
-            artifact: module-package
+variables:
+  releaseVersion: $[ replace(variables['Build.SourceBranchName'], 'v', '') ]
 
-  - stage: Publish
-    displayName: 'Publish to PSGallery'
-    dependsOn: CI
-    condition: succeeded()
+stages:
+  - stage: Release
+    displayName: 'Build and Publish'
     jobs:
       - deployment: PublishModule
-        displayName: 'Publish'
+        displayName: 'Release Build and Publish'
         environment: production
         strategy:
           runOnce:
             deploy:
               steps:
-                - download: current
+                - checkout: self
+
+                - task: PowerShell@2
+                  displayName: 'Bootstrap'
+                  inputs:
+                    targetType: filePath
+                    filePath: ./build/bootstrap.ps1
+                    pwsh: true
+
+                - task: PowerShell@2
+                  displayName: 'Release build'
+                  env:
+                    PSGALLERY_API_KEY: $(PSGALLERY_API_KEY)
+                  inputs:
+                    targetType: inline
+                    pwsh: true
+                    script: Invoke-Build -File ./build/module.build.ps1 -Task Release -NewVersion '$(releaseVersion)'
+
+                - task: PublishTestResults@2
+                  displayName: 'Publish test results'
+                  condition: always()
+                  inputs:
+                    testResultsFormat: NUnit
+                    testResultsFiles: '**/unit-results.xml'
+                    searchFolder: ./artifacts/testResults
+
+                - publish: ./artifacts/package
                   artifact: module-package
-                - task: PowerShell@2
-                  displayName: 'Validate tag matches manifest'
-                  inputs:
-                    targetType: inline
-                    pwsh: true
-                    script: |
-                      $tag = '$(Build.SourceBranchName)' -replace '^v', ''
-                      $mp = Join-Path -Path '$(Pipeline.Workspace)/module-package/<%ModuleName%>' -ChildPath '<%ModuleName%>.psd1'
-                      $m = Test-ModuleManifest -Path $mp -ErrorAction Stop
-                      if ($m.Version.ToString() -ne $tag) {
-                          throw "Tag ($tag) != manifest ($($m.Version)). Update the manifest first."
-                      }
-                - task: PowerShell@2
-                  displayName: 'Publish to PSGallery'
-                  inputs:
-                    targetType: inline
-                    pwsh: true
-                    script: |
-                      $mp = Join-Path -Path '$(Pipeline.Workspace)/module-package' -ChildPath '<%ModuleName%>'
-                      Publish-Module -Path $mp -NuGetApiKey '$(PSGALLERY_API_KEY)' -ErrorAction Stop

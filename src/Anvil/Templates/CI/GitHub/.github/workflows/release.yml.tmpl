@@ -1,5 +1,6 @@
-# Release Pipeline — <%ModuleName%>
+# Release Pipeline -- <%ModuleName%>
 # Triggered by version tags (v*).
+# Extracts the version from the tag and injects it via the build script.
 # Setup: add PSGALLERY_API_KEY as a repository secret.
 
 name: Release
@@ -12,47 +13,33 @@ permissions:
   contents: read
 
 jobs:
-  ci:
-    name: CI Gate
+  release:
+    name: Build and Publish
     runs-on: ubuntu-latest
+    environment: production
     steps:
       - uses: actions/checkout@<CHECKOUT_SHA>
+
+      - name: Extract version from tag
+        id: version
+        shell: pwsh
+        run: |
+          $Version = "${{ github.ref_name }}" -replace '^v', ''
+          Write-Host "Version: $Version"
+          "version=$Version" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+
       - name: Bootstrap
         shell: pwsh
         run: ./build/bootstrap.ps1
-      - name: Full build
+
+      - name: Release build
         shell: pwsh
-        run: Invoke-Build -File ./build/module.build.ps1
+        env:
+          PSGALLERY_API_KEY: ${{ secrets.PSGALLERY_API_KEY }}
+        run: Invoke-Build -File ./build/module.build.ps1 -Task Release -NewVersion '${{ steps.version.outputs.version }}'
+
       - uses: actions/upload-artifact@<UPLOAD_SHA>
         with:
           name: release-package
           path: ./artifacts/package/
           if-no-files-found: error
-
-  publish:
-    name: Publish to PSGallery
-    needs: ci
-    runs-on: ubuntu-latest
-    environment: production
-    steps:
-      - uses: actions/checkout@<CHECKOUT_SHA>
-      - uses: actions/download-artifact@<DOWNLOAD_SHA>
-        with:
-          name: release-package
-          path: ./artifacts/package/
-      - name: Validate tag matches manifest
-        shell: pwsh
-        run: |
-          $tag = "${{ github.ref_name }}" -replace '^v', ''
-          $mp = Join-Path -Path './artifacts/package/<%ModuleName%>' -ChildPath '<%ModuleName%>.psd1'
-          $m = Test-ModuleManifest -Path $mp -ErrorAction Stop
-          if ($m.Version.ToString() -ne $tag) {
-              throw "Tag ($tag) != manifest ($($m.Version)). Update the manifest first."
-          }
-      - name: Publish
-        shell: pwsh
-        env:
-          PSGALLERY_API_KEY: ${{ secrets.PSGALLERY_API_KEY }}
-        run: |
-          $mp = Join-Path -Path './artifacts/package' -ChildPath '<%ModuleName%>'
-          Publish-Module -Path $mp -NuGetApiKey $env:PSGALLERY_API_KEY -ErrorAction Stop
