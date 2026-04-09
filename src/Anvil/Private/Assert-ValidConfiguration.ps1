@@ -5,7 +5,7 @@ function Assert-ValidConfiguration {
         invalid or missing required values.
 
     .DESCRIPTION
-        Checks the configuration hashtable built from New-ModuleProject
+        Checks the configuration hashtable built from New-AnvilModule
         parameters against known constraints:
 
           - Required keys: ModuleName, Author, Description (non-empty).

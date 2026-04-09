@@ -34,7 +34,7 @@ BeforeAll {
         PassThru          = $true
         Confirm           = $false
     }
-    $script:ProjectPath = New-ModuleProject @NewModuleParams
+    $script:ProjectPath = New-AnvilModule @NewModuleParams
 }
 
 AfterAll {
@@ -44,7 +44,7 @@ AfterAll {
     }
 }
 
-Describe 'New-ModuleProject golden template' -Tag 'Integration' {
+Describe 'New-AnvilModule golden template' -Tag 'Integration' {
 
     Context 'Return value' {
         It 'returns the project path with -PassThru' {
@@ -198,7 +198,7 @@ Describe 'New-ModuleProject golden template' -Tag 'Integration' {
             # never touch $OriginalHash
             $Dest2 = Join-Path -Path $script:TempRoot -ChildPath 'MutationTest'
             New-Item -Path $Dest2 -ItemType Directory -Force | Out-Null
-            New-ModuleProject -Name 'MutCheck' -DestinationPath $Dest2 -Author 'X' -Confirm:$false
+            New-AnvilModule -Name 'MutCheck' -DestinationPath $Dest2 -Author 'X' -Confirm:$false
 
             $OriginalHash.Keys | Should -Be $HashBefore.Keys
             $OriginalHash['SomeKey'] | Should -Be 'SomeValue'

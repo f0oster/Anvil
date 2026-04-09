@@ -3,29 +3,32 @@
     ModuleVersion     = '0.1.0'
     GUID              = '<%ModuleGuid%>'
     Author            = '<%Author%>'
-    CompanyName       = ''
+    CompanyName       = '<%CompanyName%>'
     Copyright         = '(c) <%Year%> <%Author%>. All rights reserved.'
     Description       = '<%Description%>'
+    PowerShellVersion = '<%MinPowerShellVersion%>'
 
-    PowerShellVersion      = '<%MinPowerShellVersion%>'
-    CompatiblePSEditions   = @('Desktop', 'Core')
+    RequiredModules    = @()
+    RequiredAssemblies = @()
+    NestedModules      = @()
 
-    # Runtime dependencies only -- build/test tooling belongs in build/build.requires.psd1
-    # RequiredModules = @()
+    ScriptsToProcess = @()
+    TypesToProcess   = @()
+    FormatsToProcess = @()
 
-    # FunctionsToExport is omitted during development -- the .psm1 controls
-    # exports via Export-ModuleMember. The Build task injects an explicit list
-    # into the staged manifest for publishing.
+    # FunctionsToExport = @()
     CmdletsToExport   = @()
     VariablesToExport  = @()
     AliasesToExport    = @()
 
     PrivateData = @{
         PSData = @{
-            Tags       = @('Module')
-            # LicenseUri   = ''
-            # ProjectUri   = ''
-            # ReleaseNotes = ''
+            Tags                       = <%Tags%>
+            LicenseUri                 = '<%LicenseUri%>'
+            ProjectUri                 = '<%ProjectUri%>'
+            ReleaseNotes               = ''
+            Prerelease                 = ''
+            ExternalModuleDependencies = @()
         }
     }
 }

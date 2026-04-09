@@ -6,7 +6,7 @@ function Get-AnvilTemplate {
     .DESCRIPTION
         Inspects the bundled template directories shipped with Anvil and
         returns objects describing each template and CI provider.  Use this
-        to discover what New-ModuleProject can generate.
+        to discover what New-AnvilModule can generate.
 
         A summary is also written to the information stream.  Pipe to
         Format-Table or use -InformationAction Continue to see it.

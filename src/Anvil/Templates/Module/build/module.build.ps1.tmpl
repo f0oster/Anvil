@@ -15,9 +15,12 @@
         Invoke-Build -Task Release                      # full + publish
         Invoke-Build -Task DevCC                        # local coverage for VS Code
         Invoke-Build -Task Version -NewVersion 1.2.0    # bump version
+        Invoke-Build -Task Version -Prerelease beta1   # set prerelease label
+        Invoke-Build -Task Version -Prerelease ''      # clear prerelease label
 #>
 param(
-    [string]$NewVersion
+    [string]$NewVersion,
+    [string]$Prerelease
 )
 
 # Settings (user-editable in build.settings.psd1)
@@ -197,16 +200,17 @@ task Build {
     if (Test-Path -Path $Staging) { Remove-Item -Path $Staging -Recurse -Force }
     New-Item -Path $Staging -ItemType Directory -Force | Out-Null
 
-    Copy-Item -Path $script:ManifestPath -Destination $Staging
-    $EnUS = Join-Path -Path $script:ModuleDir -ChildPath 'en-US'
-    if (Test-Path -Path $EnUS) {
-        Copy-Item -Path $EnUS -Destination (Join-Path -Path $Staging -ChildPath 'en-US') -Recurse
+    # Copy static assets
+    foreach ($AssetDir in @('en-US', 'Types', 'Formats', 'Assemblies')) {
+        $AssetPath = Join-Path -Path $script:ModuleDir -ChildPath $AssetDir
+        if (Test-Path -Path $AssetPath) {
+            Copy-Item -Path $AssetPath -Destination (Join-Path -Path $Staging -ChildPath $AssetDir) -Recurse
+        }
     }
 
-    # Merge .ps1 files into a single .psm1
+    # Compile .psm1
     $Sb = [System.Text.StringBuilder]::new()
 
-    # Prepend Imports.ps1 (module-scoped variables and initialization)
     $ImportsPath = Join-Path -Path $script:ModuleDir -ChildPath 'Imports.ps1'
     if (Test-Path -Path $ImportsPath) {
         [void]$Sb.AppendLine('# --- Imports ---')
@@ -218,7 +222,6 @@ task Build {
     $PrivatePath = Join-Path -Path $script:ModuleDir -ChildPath 'Private'
     $PublicPath  = Join-Path -Path $script:ModuleDir -ChildPath 'Public'
 
-    # Classes first, then functions (functions may depend on classes)
     foreach ($Dir in @($PrivateClassesPath, $PrivatePath, $PublicPath)) {
         if (Test-Path -Path $Dir) {
             foreach ($File in (Get-ChildItem -Path $Dir -Filter '*.ps1' -Recurse | Sort-Object FullName)) {
@@ -232,13 +235,49 @@ task Build {
     $CompiledPsm1 = Join-Path -Path $Staging -ChildPath "$($script:ModuleName).psm1"
     Set-Content -Path $CompiledPsm1 -Value $Sb.ToString() -NoNewline
 
-    # Update the staged manifest with the discovered public functions
+    # Generate a clean manifest
     $PublicFunctions = @()
     if (Test-Path -Path $PublicPath) {
         $PublicFunctions = @((Get-ChildItem -Path $PublicPath -Filter '*.ps1' -Recurse).BaseName | Sort-Object)
     }
-    $StagedManifest = Join-Path -Path $Staging -ChildPath "$($script:ModuleName).psd1"
-    Update-ModuleManifest -Path $StagedManifest -FunctionsToExport $PublicFunctions
+
+    $SourceManifest = Import-PowerShellDataFile -Path $script:ManifestPath
+    $PSData = $SourceManifest.PrivateData.PSData
+
+    $ManifestParams = @{
+        Path              = Join-Path -Path $Staging -ChildPath "$($script:ModuleName).psd1"
+        RootModule        = "$($script:ModuleName).psm1"
+        ModuleVersion     = $SourceManifest.ModuleVersion
+        Guid              = $SourceManifest.GUID
+        Author            = $SourceManifest.Author
+        CompanyName       = $SourceManifest.CompanyName
+        Copyright         = $SourceManifest.Copyright
+        Description       = $SourceManifest.Description
+        PowerShellVersion = $SourceManifest.PowerShellVersion
+        FunctionsToExport = $PublicFunctions
+        CmdletsToExport   = @()
+        VariablesToExport  = @()
+        AliasesToExport    = @()
+    }
+
+    # Carry through optional manifest properties
+    if ($SourceManifest.CompatiblePSEditions)  { $ManifestParams.CompatiblePSEditions = $SourceManifest.CompatiblePSEditions }
+    if ($SourceManifest.RequiredModules)        { $ManifestParams.RequiredModules = $SourceManifest.RequiredModules }
+    if ($SourceManifest.RequiredAssemblies)     { $ManifestParams.RequiredAssemblies = $SourceManifest.RequiredAssemblies }
+    if ($SourceManifest.NestedModules)          { $ManifestParams.NestedModules = $SourceManifest.NestedModules }
+    if ($SourceManifest.ScriptsToProcess)       { $ManifestParams.ScriptsToProcess = $SourceManifest.ScriptsToProcess }
+    if ($SourceManifest.TypesToProcess)         { $ManifestParams.TypesToProcess = $SourceManifest.TypesToProcess }
+    if ($SourceManifest.FormatsToProcess)       { $ManifestParams.FormatsToProcess = $SourceManifest.FormatsToProcess }
+
+    # Carry through PSData metadata
+    if ($PSData.Tags)                          { $ManifestParams.Tags = $PSData.Tags }
+    if ($PSData.LicenseUri)                    { $ManifestParams.LicenseUri = $PSData.LicenseUri }
+    if ($PSData.ProjectUri)                    { $ManifestParams.ProjectUri = $PSData.ProjectUri }
+    if ($PSData.ReleaseNotes)                  { $ManifestParams.ReleaseNotes = $PSData.ReleaseNotes }
+    if ($PSData.Prerelease)                    { $ManifestParams.Prerelease = $PSData.Prerelease }
+    if ($PSData.ExternalModuleDependencies)    { $ManifestParams.ExternalModuleDependencies = $PSData.ExternalModuleDependencies }
+
+    New-ModuleManifest @ManifestParams
 
     Write-Build White "  Compiled $($PublicFunctions.Count) public + private functions into .psm1"
     Write-BuildFooter 'Build complete'
@@ -282,9 +321,18 @@ task Version {
 
     if ($NewVersion) {
         Update-ModuleManifest -Path $script:ManifestPath -ModuleVersion $NewVersion
-        Write-Build Green "  Updated: $NewVersion"
-    } else {
-        Write-Build DarkGray '  Pass -NewVersion to bump: Invoke-Build Version -NewVersion 1.2.0'
+        Write-Build Green "  Updated version: $NewVersion"
+    }
+    if ($PSBoundParameters.ContainsKey('Prerelease')) {
+        Update-ModuleManifest -Path $script:ManifestPath -Prerelease $Prerelease
+        if ($Prerelease) {
+            Write-Build Green "  Updated prerelease: $Prerelease"
+        } else {
+            Write-Build Green '  Cleared prerelease label'
+        }
+    }
+    if (-not $NewVersion -and -not $PSBoundParameters.ContainsKey('Prerelease')) {
+        Write-Build DarkGray '  Pass -NewVersion and/or -Prerelease to update'
     }
     Write-BuildFooter 'Version task complete'
 }

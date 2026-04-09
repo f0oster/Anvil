@@ -20,12 +20,12 @@ $Params = @{
     CIProvider      = 'GitHub'
     GitInit         = $true
 }
-New-ModuleProject @Params
+New-AnvilModule @Params
 ```
 
 This creates a `NetworkTools/` directory with module source, build scripts, tests, CI workflows, and everything needed to start developing immediately. Run `./build/bootstrap.ps1` then `Invoke-Build` to build it.
 
-`New-ModuleProject` accepts parameters for CI provider (`GitHub`, `AzurePipelines`, `GitLab`, `None`), license type (`MIT`, `Apache2`, `None`), coverage threshold, minimum PowerShell version, and whether to include platyPS documentation generation. Use `Get-Help New-ModuleProject -Full` for the complete list.
+`New-AnvilModule` accepts parameters for CI provider (`GitHub`, `AzurePipelines`, `GitLab`, `None`), license type (`MIT`, `Apache2`, `None`), coverage threshold, minimum PowerShell version, and whether to include platyPS documentation generation. Use `Get-Help New-AnvilModule -Full` for the complete list.
 
 `Get-AnvilTemplate` lists the available templates and CI providers shipped with the module.
 

@@ -7,15 +7,17 @@
     CompanyName       = 'TODO'
     Copyright         = '(c) 2026 TODO. All rights reserved.'
     Description       = 'Scaffolds production-grade PowerShell module projects with opinionated build, test, lint, docs, and CI/CD pipelines.'
+    PowerShellVersion = '7.2'
 
-    PowerShellVersion = '5.1'
+    RequiredModules = @()
+    RequiredAssemblies = @()
+    NestedModules = @()
+    
+    ScriptsToProcess = @()
+    TypesToProcess = @()
+    FormatsToProcess = @()
 
-    # No runtime dependencies — the scaffolder needs nothing beyond core PowerShell.
-    # RequiredModules = @()
-
-    # FunctionsToExport is omitted during development -- the .psm1 controls
-    # exports via Export-ModuleMember. The Build task injects an explicit list
-    # into the staged manifest for publishing.
+    # FunctionsToExport = @()
     CmdletsToExport   = @()
     VariablesToExport  = @()
     AliasesToExport    = @()
@@ -26,7 +28,9 @@
             # TODO: Replace placeholder URIs before publishing to PSGallery
             LicenseUri   = 'https://github.com/TODO/Anvil/blob/main/LICENSE'
             ProjectUri   = 'https://github.com/TODO/Anvil'
-            # ReleaseNotes = ''
+            ReleaseNotes = ''
+            Prerelease = ''
+            ExternalModuleDependencies = @()
         }
     }
 }
