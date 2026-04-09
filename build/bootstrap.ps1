@@ -98,7 +98,8 @@ $Specs = $Merged.GetEnumerator() | ForEach-Object { "$($_.Key)=$($_.Value)" }
 
 $Params = @{
     Specification = $Specs
-    Destination   = 'CurrentUser'
+    Scope         = 'CurrentUser'
+    Confirm       = $false
 }
 if ($Update) { $Params['Update'] = $true }
 
