@@ -13,13 +13,9 @@
     # No runtime dependencies — the scaffolder needs nothing beyond core PowerShell.
     # RequiredModules = @()
 
-    FunctionsToExport = @(
-        'New-ModuleProject'
-        'Get-AnvilTemplate'
-        'New-AnvilTest'
-        'New-AnvilFunction'
-        'New-AnvilClass'
-    )
+    # FunctionsToExport is omitted during development -- the .psm1 controls
+    # exports via Export-ModuleMember. The Build task injects an explicit list
+    # into the staged manifest for publishing.
     CmdletsToExport   = @()
     VariablesToExport  = @()
     AliasesToExport    = @()

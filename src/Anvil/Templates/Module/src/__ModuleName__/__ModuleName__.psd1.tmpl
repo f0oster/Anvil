@@ -13,10 +13,9 @@
     # Runtime dependencies only -- build/test tooling belongs in build/build.requires.psd1
     # RequiredModules = @()
 
-    # Add your public function names here as you create them.
-    FunctionsToExport = @(
-        'Get-Greeting'
-    )
+    # FunctionsToExport is omitted during development -- the .psm1 controls
+    # exports via Export-ModuleMember. The Build task injects an explicit list
+    # into the staged manifest for publishing.
     CmdletsToExport   = @()
     VariablesToExport  = @()
     AliasesToExport    = @()

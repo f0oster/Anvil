@@ -59,14 +59,14 @@ Example from `YourModule.Module.Tests.ps1`:
 ```powershell
 BeforeDiscovery {
     # $DeclaredFunctions drives -ForEach to generate one It per function
-    $ManifestData      = Import-PowerShellDataFile -Path $ManifestPath
-    $DeclaredFunctions = @($ManifestData.FunctionsToExport)
+    $PublicDir = Join-Path -Path $ModuleDir -ChildPath 'Public'
+    $DeclaredFunctions = @((Get-ChildItem -Path $PublicDir -Filter '*.ps1' -Recurse).BaseName | Sort-Object)
 }
 
 BeforeAll {
     # $ExpectedFunctionCount is used inside an It block for a count assertion
-    $ManifestData = Import-PowerShellDataFile -Path $ManifestPath
-    $ExpectedFunctionCount = @($ManifestData.FunctionsToExport).Count
+    $PublicDir = Join-Path -Path $ModuleDir -ChildPath 'Public'
+    $ExpectedFunctionCount = @((Get-ChildItem -Path $PublicDir -Filter '*.ps1' -Recurse).BaseName).Count
 }
 ```
 

@@ -235,17 +235,16 @@ task Build {
         }
     }
 
-    $PublicFunctions = @()
-    if (Test-Path -Path $PublicPath) {
-        $PublicFunctions = (Get-ChildItem -Path $PublicPath -Filter '*.ps1' -Recurse).BaseName | Sort-Object
-    }
-    if ($PublicFunctions.Count -gt 0) {
-        $Names = ($PublicFunctions | ForEach-Object { "'$_'" }) -join ', '
-        [void]$Sb.AppendLine("Export-ModuleMember -Function @($Names)")
-    }
-
     $CompiledPsm1 = Join-Path -Path $Staging -ChildPath "$($script:ModuleName).psm1"
     Set-Content -Path $CompiledPsm1 -Value $Sb.ToString() -NoNewline
+
+    # Update the staged manifest with the discovered public functions
+    $PublicFunctions = @()
+    if (Test-Path -Path $PublicPath) {
+        $PublicFunctions = @((Get-ChildItem -Path $PublicPath -Filter '*.ps1' -Recurse).BaseName | Sort-Object)
+    }
+    $StagedManifest = Join-Path -Path $Staging -ChildPath "$($script:ModuleName).psd1"
+    Update-ModuleManifest -Path $StagedManifest -FunctionsToExport $PublicFunctions
 
     Write-Build White "  Compiled $($PublicFunctions.Count) public + private functions into .psm1"
     Write-BuildFooter 'Build complete'

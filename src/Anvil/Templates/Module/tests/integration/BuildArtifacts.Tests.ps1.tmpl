@@ -38,9 +38,13 @@ Describe 'Build Artifacts' -Tag 'Integration' {
             $Content | Should -Not -Match '\.\s+\$.*\.FullName'
             $Content | Should -Not -Match 'Get-ChildItem.*-Filter.*\*\.ps1'
         }
-        It '.psm1 contains Export-ModuleMember' {
+        It '.psm1 does not contain Export-ModuleMember' {
             $Content = Get-Content -Path $StagedPsm1 -Raw
-            $Content | Should -Match 'Export-ModuleMember'
+            $Content | Should -Not -Match 'Export-ModuleMember'
+        }
+        It 'manifest has explicit FunctionsToExport (not wildcard)' {
+            $Data = Import-PowerShellDataFile -Path $StagedPsd1
+            $Data.FunctionsToExport | Should -Not -Be '*'
         }
         It 'staged module can be imported' {
             { Import-Module $StagedPsd1 -Force -ErrorAction Stop } | Should -Not -Throw

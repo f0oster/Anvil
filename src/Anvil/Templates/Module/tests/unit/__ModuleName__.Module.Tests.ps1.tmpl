@@ -7,10 +7,9 @@ BeforeDiscovery {
     }
     $ModuleName   = '<%ModuleName%>'
     $ModuleDir    = Join-Path -Path $ProjectRoot -ChildPath 'src' | Join-Path -ChildPath $ModuleName
-    $ManifestPath = Join-Path -Path $ModuleDir -ChildPath "$ModuleName.psd1"
+    $PublicDir    = Join-Path -Path $ModuleDir -ChildPath 'Public'
 
-    $ManifestData      = Import-PowerShellDataFile -Path $ManifestPath
-    $DeclaredFunctions = @($ManifestData.FunctionsToExport)
+    $DeclaredFunctions = @((Get-ChildItem -Path $PublicDir -Filter '*.ps1' -Recurse).BaseName | Sort-Object)
 }
 
 BeforeAll {
@@ -21,12 +20,12 @@ BeforeAll {
     $ModuleName   = '<%ModuleName%>'
     $ModuleDir    = Join-Path -Path $ProjectRoot -ChildPath 'src' | Join-Path -ChildPath $ModuleName
     $ManifestPath = Join-Path -Path $ModuleDir -ChildPath "$ModuleName.psd1"
+    $PublicDir    = Join-Path -Path $ModuleDir -ChildPath 'Public'
 
     Get-Module -Name $ModuleName -ErrorAction SilentlyContinue | Remove-Module -Force
     Import-Module $ManifestPath -Force -ErrorAction Stop
 
-    $ManifestData = Import-PowerShellDataFile -Path $ManifestPath
-    $ExpectedFunctionCount = @($ManifestData.FunctionsToExport).Count
+    $ExpectedFunctionCount = @((Get-ChildItem -Path $PublicDir -Filter '*.ps1' -Recurse).BaseName).Count
 }
 
 AfterAll {
