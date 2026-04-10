@@ -28,13 +28,7 @@ It runs `Invoke-Formatter` (from PSScriptAnalyzer) on every `.ps1` file in your 
 
 ### How do I skip the Docs task?
 
-If you scaffolded without `-IncludeDocs`, the Docs task isn't in the default pipeline. If it is included and you want to skip it temporarily, run specific tasks:
-
-```powershell
-Invoke-Build -Task Clean, Validate, Format, Lint, Test, Build, Package
-```
-
-Or uninstall platyPS — the Docs task skips gracefully when it's not available.
+Set `IncludeDocs = $false` in `build/build.settings.psd1`. The Docs task will skip automatically during the pipeline.
 
 ### The Publish task refuses to run
 
@@ -86,16 +80,9 @@ This is a PowerShell limitation, not a Pester or Anvil issue. It affects develop
 
 ### What's the coverage threshold and how do I change it?
 
-The default is 80%. Pester fails the Test task if coverage drops below this. Change it in `build/build.settings.psd1`:
+The default is 80%. Pester fails the Test task if coverage drops below this. Change `CoverageThreshold` in `build/build.settings.psd1` to any value from 0 to 100. Set it to 0 to disable coverage enforcement.
 
-```powershell
-@{
-    ModuleName        = 'MyModule'
-    CoverageThreshold = 60    # or 0 to disable
-}
-```
-
-Coverage is measured against `.ps1` files in `PrivateClasses/`, `Public/`, and `Private/`.
+See [Build Pipeline > Build settings](build-pipeline.md#build-settings) for all available settings.
 
 ### Why does my test name with angle brackets fail?
 

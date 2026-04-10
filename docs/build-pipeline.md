@@ -1,6 +1,6 @@
 # Build Pipeline
 
-The build is powered by [InvokeBuild](https://github.com/nightroman/Invoke-Build). All tasks are defined in `build/module.build.ps1` and configured via `build/build.settings.psd1`.
+The build is powered by [InvokeBuild](https://github.com/nightroman/Invoke-Build). All tasks are defined in `build/module.build.ps1` and configured via `build/build.settings.psd1`. Default values are stored in `build/build.settings_DEFAULTS_DO_NOT_EDIT.psd1` — any missing or invalid setting in your config falls back to its default automatically.
 
 ## Pipelines
 
@@ -34,6 +34,22 @@ Invoke-Build -File ./build/module.build.ps1 -Task Release -NewVersion 1.0.0 -Pre
 
 During development, `Invoke-Build -Task Lint, Test` is the fastest feedback loop. It skips formatting, docs, compilation, and packaging — just checks your code and runs tests.
 
+## Build settings
+
+All settings live in `build/build.settings.psd1`. Edit this file to customise the build — you never need to modify `module.build.ps1`.
+
+| Setting | Default | Valid values | What it controls |
+|---------|---------|-------------|-----------------|
+| `ModuleName` | *(your module)* | Non-empty string | Module to build |
+| `CoverageThreshold` | `80` | `0`–`100` | Minimum code coverage percentage (0 to disable) |
+| `IncludeDocs` | `$true` or `$false` | Boolean | Whether the Docs task generates platyPS documentation |
+| `TestOutputFormat` | `'NUnitXml'` | `NUnitXml`, `NUnit2.5`, `NUnit3`, `JUnitXml` | Test result format for CI reporting |
+| `TestVerbosity` | `'Detailed'` | `None`, `Normal`, `Detailed`, `Diagnostic` | Pester output verbosity |
+| `LintFailOn` | `@('Warning', 'Error')` | `Error`, `Warning`, `Information`, `ParseError` | Severity levels that fail the build |
+| `AssetDirectories` | `@('Types', 'Formats', 'Assemblies')` | Array of strings | Extra directories copied to the staged module |
+
+If you remove a setting or set it to an invalid value, the build uses the default from `build/build.settings_DEFAULTS_DO_NOT_EDIT.psd1` and prints a warning.
+
 ## Task reference
 
 ### Clean
@@ -54,7 +70,7 @@ This task modifies your source files in place. If you're tracking formatting cha
 
 Runs `Invoke-ScriptAnalyzer` against the module source with the settings from `PSScriptAnalyzerSettings.psd1`. It also loads any `.psm1` files found in `build/analyzers/` as custom rules.
 
-The build fails if any Warning or Error severity issues are found. Information-level findings are reported but don't fail the build.
+The build fails if any issues matching the `LintFailOn` severities are found (default: Warning and Error). Information-level findings are reported but don't fail the build unless you add `'Information'` to `LintFailOn`.
 
 The custom rules that ship with Anvil projects catch:
 
@@ -73,15 +89,13 @@ To disable any rule, add its name to `ExcludeRules` in `PSScriptAnalyzerSettings
 
 Runs Pester 5 unit tests from `tests/unit/` with code coverage enabled. Coverage is measured against `.ps1` files in `PrivateClasses/`, `Public/`, and `Private/`.
 
-Output:
-- `artifacts/testResults/unit-results.xml` — NUnit XML test results (for CI reporting)
-- `artifacts/testResults/coverage.xml` — JaCoCo coverage XML
+The test result format and verbosity are controlled by the `TestOutputFormat` and `TestVerbosity` settings. The `PESTER_OUTPUT_FORMAT` environment variable overrides `TestOutputFormat` if set (useful for CI systems that need a specific format without changing the settings file).
 
-The test task fails the build if any test fails or if coverage drops below the threshold in `build.settings.psd1` (default: 80%). Set the threshold to 0 if you want to disable coverage enforcement while keeping the report.
+The test task fails the build if any test fails or if coverage drops below `CoverageThreshold` (default: 80%). Set the threshold to 0 to disable coverage enforcement while keeping the report.
 
 ### Docs
 
-This task is only included in the default pipeline when the project was scaffolded with `-IncludeDocs`. If omitted, the task still exists and can be run manually, but it won't run as part of `Invoke-Build` with no `-Task` flag.
+This task is controlled by the `IncludeDocs` setting. When set to `$false`, the task skips automatically. You can toggle it at any time in `build/build.settings.psd1` without editing the build script.
 
 Generates and maintains platyPS markdown documentation in `docs/commands/`. The behavior depends on whether documentation already exists:
 
@@ -96,7 +110,7 @@ If platyPS isn't installed, the Docs task skips gracefully.
 
 Produces the compiled module in `artifacts/package/<ModuleName>/`. This is the most complex task and does several things:
 
-1. **Copies static assets** — `Types/`, `Formats/`, `Assemblies/` directories (if they exist in source)
+1. **Copies static assets** — directories listed in the `AssetDirectories` setting (default: `Types/`, `Formats/`, `Assemblies/`), if they exist in source
 2. **Compiles the `.psm1`** — merges `Imports.ps1`, then `PrivateClasses/*.ps1`, `Private/*.ps1`, and `Public/*.ps1` into a single file in that order. The compiled module loads faster than dot-sourcing individual files at import time.
 3. **Generates the manifest** — creates a fresh `.psd1` with `FunctionsToExport` set to the Public function names.
 4. **Generates MAML help** — if `docs/commands/` has markdown and platyPS is available, converts it to MAML XML in the staged module's `en-US/` directory for `Get-Help` support.
