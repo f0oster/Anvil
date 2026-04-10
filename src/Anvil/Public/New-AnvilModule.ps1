@@ -244,12 +244,6 @@ function New-AnvilModule {
     $Year = (Get-Date).Year.ToString()
     $DocsEnabled = if ($Resolved.IncludeDocs) { 'true' } else { 'false' }
 
-    $DefaultTasks = if ($Resolved.IncludeDocs) {
-        'Clean, Validate, Format, Lint, Test, Docs, Build, IntegrationTest, Package'
-    } else {
-        'Clean, Validate, Format, Lint, Test, Build, IntegrationTest, Package'
-    }
-
     # Format array values for .psd1 embedding
     $EditionsString = "@('" + ($Resolved.CompatiblePSEditions -join "', '") + "')"
     $TagsString = if ($Resolved.Tags.Count -gt 0) {
@@ -271,7 +265,6 @@ function New-AnvilModule {
         License              = $Resolved.License
         CIProvider           = $Resolved.CIProvider
         IncludeDocs          = $DocsEnabled
-        DefaultTasks         = $DefaultTasks
         Tags                 = $TagsString
         ProjectUri           = $Resolved.ProjectUri
         LicenseUri           = $Resolved.LicenseUri

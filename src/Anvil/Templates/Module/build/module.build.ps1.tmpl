@@ -5,7 +5,7 @@
 
 .DESCRIPTION
     Task graph:
-        . (default)  ->  Clean, Validate, Format, Lint, Test, [Docs,] Build, IntegrationTest, Package
+        . (default)  ->  Clean, Validate, Format, Lint, Test, Docs, Build, IntegrationTest, Package
         Release      ->  Version + . + Publish
         DevCC        ->  generate Coverage Gutters output for VS Code
 
@@ -23,10 +23,49 @@ param(
     [string]$Prerelease
 )
 
-# Settings (user-editable in build.settings.psd1)
-$script:Settings       = Import-PowerShellDataFile -Path (Join-Path -Path $PSScriptRoot -ChildPath 'build.settings.psd1')
-$script:ModuleName     = $script:Settings.ModuleName
+# Settings (user-editable in build.settings.psd1, defaults in build.settings_DEFAULTS_DO_NOT_EDIT.psd1)
+$script:DefaultSettings = Import-PowerShellDataFile -Path (Join-Path -Path $PSScriptRoot -ChildPath 'build.settings_DEFAULTS_DO_NOT_EDIT.psd1')
+$script:UserSettings    = Import-PowerShellDataFile -Path (Join-Path -Path $PSScriptRoot -ChildPath 'build.settings.psd1')
+
+$script:ValidValues = @{
+    TestOutputFormat = @('NUnitXml', 'NUnit2.5', 'NUnit3', 'JUnitXml')
+    TestVerbosity    = @('None', 'Normal', 'Detailed', 'Diagnostic')
+    LintFailOn       = @('Error', 'Warning', 'Information', 'ParseError')
+}
+
+function Test-SettingValid ([string]$Name, $Value) {
+    if ($null -eq $Value) { return $false }
+    switch ($Name) {
+        'ModuleName'        { return ($Value -is [string]) -and ($Value.Length -gt 0) }
+        'CoverageThreshold' { return ($Value -is [int]) -and ($Value -ge 0) -and ($Value -le 100) }
+        'IncludeDocs'       { return $Value -is [bool] }
+        'TestOutputFormat'  { return $Value -in $script:ValidValues.TestOutputFormat }
+        'TestVerbosity'     { return $Value -in $script:ValidValues.TestVerbosity }
+        'LintFailOn'        { return ($Value -is [array]) -and @($Value | Where-Object { $_ -notin $script:ValidValues.LintFailOn }).Count -eq 0 }
+        'AssetDirectories'  { return ($Value -is [array]) -and @($Value | Where-Object { -not ($_ -is [string]) -or $_.Length -eq 0 }).Count -eq 0 }
+        default             { return $true }
+    }
+}
+
+$script:Settings = @{}
+foreach ($Key in $script:DefaultSettings.Keys) {
+    if ($script:UserSettings.ContainsKey($Key) -and (Test-SettingValid -Name $Key -Value $script:UserSettings[$Key])) {
+        $script:Settings[$Key] = $script:UserSettings[$Key]
+    } else {
+        if ($script:UserSettings.ContainsKey($Key)) {
+            Write-Build Yellow "  [settings] Invalid value for '$Key' in build.settings.psd1 -- using default"
+        }
+        $script:Settings[$Key] = $script:DefaultSettings[$Key]
+    }
+}
+
+$script:ModuleName        = $script:Settings.ModuleName
 $script:CoverageThreshold = $script:Settings.CoverageThreshold
+$script:IncludeDocs       = $script:Settings.IncludeDocs
+$script:TestOutputFormat  = $script:Settings.TestOutputFormat
+$script:TestVerbosity     = $script:Settings.TestVerbosity
+$script:LintFailOn        = $script:Settings.LintFailOn
+$script:AssetDirectories  = $script:Settings.AssetDirectories
 
 # Project paths
 $script:ProjectRoot    = Split-Path -Path $BuildFile -Parent | Split-Path -Parent
@@ -126,7 +165,7 @@ task Lint {
     $Results = Invoke-ScriptAnalyzer @Params
     if ($Results) {
         $Results | Format-Table -AutoSize
-        $Failures = $Results | Where-Object { $_.Severity -in 'Error', 'Warning' }
+        $Failures = $Results | Where-Object { $_.Severity -in $script:LintFailOn }
         if ($Failures) {
             throw "PSScriptAnalyzer found $($Failures.Count) issue(s)."
         }
@@ -141,9 +180,9 @@ task Test {
     $Cfg = New-PesterConfiguration
     $Cfg.Run.Path                           = $script:UnitTestDir
     $Cfg.Run.Exit                           = $true
-    $Cfg.Output.Verbosity                   = 'Detailed'
+    $Cfg.Output.Verbosity                   = $script:TestVerbosity
     $Cfg.TestResult.Enabled                 = $true
-    $Cfg.TestResult.OutputFormat             = if ($env:PESTER_OUTPUT_FORMAT) { $env:PESTER_OUTPUT_FORMAT } else { 'NUnitXml' }
+    $Cfg.TestResult.OutputFormat             = if ($env:PESTER_OUTPUT_FORMAT) { $env:PESTER_OUTPUT_FORMAT } else { $script:TestOutputFormat }
     $Cfg.TestResult.OutputPath               = Join-Path -Path $script:TestResultsDir -ChildPath 'unit-results.xml'
     $Cfg.CodeCoverage.Enabled               = $true
     $Cfg.CodeCoverage.Path                  = @(
@@ -161,6 +200,11 @@ task Test {
 
 task Docs {
     Write-BuildHeader 'Documentation (platyPS)'
+
+    if (-not $script:IncludeDocs) {
+        Write-Build DarkGray '  Docs disabled in build.settings.psd1 -- skipping'
+        return
+    }
 
     if (-not (Get-Module -ListAvailable -Name 'platyPS' -ErrorAction SilentlyContinue)) {
         Write-Build Yellow '  platyPS not installed -- skipping docs generation'
@@ -200,7 +244,7 @@ task Build {
     New-Item -Path $Staging -ItemType Directory -Force | Out-Null
 
     # Copy static assets
-    foreach ($AssetDir in @('Types', 'Formats', 'Assemblies')) {
+    foreach ($AssetDir in $script:AssetDirectories) {
         $AssetPath = Join-Path -Path $script:ModuleDir -ChildPath $AssetDir
         if (Test-Path -Path $AssetPath) {
             Copy-Item -Path $AssetPath -Destination (Join-Path -Path $Staging -ChildPath $AssetDir) -Recurse
@@ -304,9 +348,9 @@ task IntegrationTest {
     $Cfg = New-PesterConfiguration
     $Cfg.Run.Path                 = $script:IntTestDir
     $Cfg.Run.Exit                 = $true
-    $Cfg.Output.Verbosity         = 'Detailed'
+    $Cfg.Output.Verbosity         = $script:TestVerbosity
     $Cfg.TestResult.Enabled       = $true
-    $Cfg.TestResult.OutputFormat   = 'NUnitXml'
+    $Cfg.TestResult.OutputFormat   = if ($env:PESTER_OUTPUT_FORMAT) { $env:PESTER_OUTPUT_FORMAT } else { $script:TestOutputFormat }
     $Cfg.TestResult.OutputPath     = Join-Path -Path $script:TestResultsDir -ChildPath 'integration-results.xml'
     Invoke-Pester -Configuration $Cfg
     Write-BuildFooter 'Integration tests complete'
@@ -380,5 +424,5 @@ task DevCC {
 }
 
 # Composite tasks
-task . <%DefaultTasks%>
+task . Clean, Validate, Format, Lint, Test, Docs, Build, IntegrationTest, Package
 task Release Version, ., Publish
