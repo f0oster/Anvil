@@ -42,6 +42,7 @@ function Invoke-TemplateEngine {
         path segments and <%ModuleName%> content placeholders with 'Foo'.
     #>
     [CmdletBinding()]
+    [OutputType([int])]
     param(
         [Parameter(Mandatory)]
         [string]$SourcePath,

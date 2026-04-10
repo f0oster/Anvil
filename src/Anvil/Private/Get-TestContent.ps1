@@ -1,4 +1,17 @@
 function Get-TestContent {
+    <#
+    .SYNOPSIS
+        Returns the boilerplate content for a new Pester test file.
+
+    .PARAMETER Name
+        The name of the function or class being tested.
+
+    .PARAMETER ModuleName
+        The module name, used in import and InModuleScope blocks.
+
+    .PARAMETER Scope
+        The test scope. Determines the test pattern used.
+    #>
     param(
         [string]$Name,
         [string]$ModuleName,

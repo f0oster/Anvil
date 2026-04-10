@@ -11,9 +11,8 @@ function New-AnvilFunction {
 
         The module name is read from build/build.settings.psd1 in the project root.
 
-        Public functions are created with a comment-based help block. After
-        creating a public function, add its name to FunctionsToExport in the
-        module manifest (.psd1) to export it.
+        Public functions are created with a comment-based help block and
+        are automatically exported by the Build task.
 
     .PARAMETER FunctionName
         The name of the function to create. The generated files will be named
@@ -173,7 +172,4 @@ function New-AnvilFunction {
     if ($Force) { $TestParams.Force = $true }
     New-AnvilTest @TestParams
 
-    if ($Scope -eq 'Public') {
-        Write-Warning "Remember to add '$FunctionName' to FunctionsToExport in the module manifest."
-    }
 }

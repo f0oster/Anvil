@@ -1,3 +1,5 @@
+# CI Pipeline -- <%ModuleName%>
+
 trigger:
   branches:
     include:
@@ -8,84 +10,45 @@ pr:
     include:
       - main
 
+strategy:
+  matrix:
+    linux:
+      vmImage: 'ubuntu-latest'
+    windows:
+      vmImage: 'windows-latest'
+    macos:
+      vmImage: 'macos-latest'
+
 pool:
-  vmImage: 'ubuntu-latest'
+  vmImage: $(vmImage)
 
-stages:
-  - stage: Lint
-    displayName: 'Lint'
-    jobs:
-      - job: PSScriptAnalyzer
-        steps:
-          - task: PowerShell@2
-            displayName: 'Bootstrap (Build scope)'
-            inputs:
-              targetType: filePath
-              filePath: ./build/bootstrap.ps1
-              arguments: -Scope Build
-              pwsh: true
-          - task: PowerShell@2
-            displayName: 'Run PSScriptAnalyzer'
-            inputs:
-              targetType: inline
-              script: Invoke-Build -File ./build/module.build.ps1 -Task Lint
-              pwsh: true
+steps:
+  - task: PowerShell@2
+    displayName: 'Bootstrap'
+    inputs:
+      targetType: filePath
+      filePath: ./build/bootstrap.ps1
+      pwsh: true
 
-  - stage: Test
-    displayName: 'Test'
-    dependsOn: Lint
-    jobs:
-      - job: UnitTests
-        strategy:
-          matrix:
-            linux:
-              vmImage: 'ubuntu-latest'
-            windows:
-              vmImage: 'windows-latest'
-            macos:
-              vmImage: 'macos-latest'
-        pool:
-          vmImage: $(vmImage)
-        steps:
-          - task: PowerShell@2
-            displayName: 'Bootstrap'
-            inputs:
-              targetType: filePath
-              filePath: ./build/bootstrap.ps1
-              pwsh: true
-          - task: PowerShell@2
-            displayName: 'Run Pester tests'
-            inputs:
-              targetType: inline
-              script: Invoke-Build -File ./build/module.build.ps1 -Task Test
-              pwsh: true
-          - task: PublishTestResults@2
-            displayName: 'Publish test results'
-            condition: always()
-            inputs:
-              testResultsFormat: NUnit
-              testResultsFiles: '**/unit-results.xml'
-              searchFolder: ./artifacts/testResults
+  - task: PowerShell@2
+    displayName: 'Build'
+    inputs:
+      targetType: inline
+      script: Invoke-Build -File ./build/module.build.ps1
+      pwsh: true
 
-  - stage: Package
-    displayName: 'Package'
-    dependsOn: Test
-    jobs:
-      - job: BuildPackage
-        steps:
-          - task: PowerShell@2
-            displayName: 'Bootstrap'
-            inputs:
-              targetType: filePath
-              filePath: ./build/bootstrap.ps1
-              pwsh: true
-          - task: PowerShell@2
-            displayName: 'Full build'
-            inputs:
-              targetType: inline
-              script: Invoke-Build -File ./build/module.build.ps1
-              pwsh: true
-          - publish: ./artifacts/package
-            artifact: module-package
-          - publish: ./artifacts/archive
-            artifact: module-archive
+  - task: PublishTestResults@2
+    displayName: 'Publish test results'
+    condition: always()
+    inputs:
+      testResultsFormat: NUnit
+      testResultsFiles: '**/unit-results.xml'
+      searchFolder: ./artifacts/testResults
+
+  - publish: ./artifacts/package
+    artifact: 'module-package-$(vmImage)'
+    condition: eq(variables['vmImage'], 'ubuntu-latest')
+
+  - publish: ./artifacts/archive
+    artifact: 'module-archive'
+    condition: eq(variables['vmImage'], 'ubuntu-latest')

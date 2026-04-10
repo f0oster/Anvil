@@ -1,6 +1,6 @@
 # Release Pipeline -- <%ModuleName%>
 # Triggered by version tags (v*).
-# Extracts the version from the tag and injects it via the build script.
+# Validates on all platforms, then publishes.
 # Setup: add PSGALLERY_API_KEY as a pipeline variable (secret).
 
 trigger:
@@ -10,19 +10,67 @@ trigger:
 
 pr: none
 
-pool:
-  vmImage: 'ubuntu-latest'
-
-variables:
-  releaseVersion: $[ replace(variables['Build.SourceBranchName'], 'v', '') ]
-
 stages:
-  - stage: Release
-    displayName: 'Build and Publish'
+  - stage: Validate
+    displayName: 'Validate'
+    jobs:
+      - job: CI
+        strategy:
+          matrix:
+            linux:
+              vmImage: 'ubuntu-latest'
+            windows:
+              vmImage: 'windows-latest'
+            macos:
+              vmImage: 'macos-latest'
+        pool:
+          vmImage: $(vmImage)
+        steps:
+          - task: PowerShell@2
+            displayName: 'Validate version format'
+            inputs:
+              targetType: inline
+              pwsh: true
+              script: |
+                $Version = '$(Build.SourceBranchName)' -replace '^v', ''
+                if ($Version -notmatch '^\d+\.\d+\.\d+') {
+                    throw "Invalid version format: '$Version'. Expected semver (e.g., 1.0.0)."
+                }
+                Write-Host "Version: $Version"
+
+          - task: PowerShell@2
+            displayName: 'Bootstrap'
+            inputs:
+              targetType: filePath
+              filePath: ./build/bootstrap.ps1
+              pwsh: true
+
+          - task: PowerShell@2
+            displayName: 'Build'
+            inputs:
+              targetType: inline
+              script: Invoke-Build -File ./build/module.build.ps1
+              pwsh: true
+
+          - task: PublishTestResults@2
+            displayName: 'Publish test results'
+            condition: always()
+            inputs:
+              testResultsFormat: NUnit
+              testResultsFiles: '**/unit-results.xml'
+              searchFolder: ./artifacts/testResults
+
+  - stage: Publish
+    displayName: 'Publish'
+    dependsOn: Validate
     jobs:
       - deployment: PublishModule
         displayName: 'Release Build and Publish'
         environment: production
+        pool:
+          vmImage: 'ubuntu-latest'
+        variables:
+          releaseVersion: $[ replace(variables['Build.SourceBranchName'], 'v', '') ]
         strategy:
           runOnce:
             deploy:
@@ -36,22 +84,18 @@ stages:
                     filePath: ./build/bootstrap.ps1
                     pwsh: true
 
+                # To enable PSGallery publishing:
+                #   1. Add PSGALLERY_API_KEY as a secret pipeline variable
+                #   2. Uncomment the env block below
+                #   3. Change the script to: Invoke-Build -File ./build/module.build.ps1 -Task Release -NewVersion '$(releaseVersion)'
                 - task: PowerShell@2
                   displayName: 'Release build'
-                  env:
-                    PSGALLERY_API_KEY: $(PSGALLERY_API_KEY)
+                  # env:
+                  #   PSGALLERY_API_KEY: $(PSGALLERY_API_KEY)
                   inputs:
                     targetType: inline
                     pwsh: true
-                    script: Invoke-Build -File ./build/module.build.ps1 -Task Release -NewVersion '$(releaseVersion)'
-
-                - task: PublishTestResults@2
-                  displayName: 'Publish test results'
-                  condition: always()
-                  inputs:
-                    testResultsFormat: NUnit
-                    testResultsFiles: '**/unit-results.xml'
-                    searchFolder: ./artifacts/testResults
+                    script: Invoke-Build -File ./build/module.build.ps1 -NewVersion '$(releaseVersion)'
 
                 - publish: ./artifacts/package
-                  artifact: module-package
+                  artifact: release-package

@@ -1,4 +1,17 @@
 function Read-PromptChoice {
+    <#
+    .SYNOPSIS
+        Prompts the user to select from a list of valid choices.
+
+    .PARAMETER Prompt
+        The prompt text displayed to the user.
+
+    .PARAMETER Choices
+        The set of valid choices. Input is reprompted until a valid choice is entered.
+
+    .PARAMETER Default
+        The value returned when the user presses Enter without typing anything.
+    #>
     [CmdletBinding()]
     param(
         [Parameter(Mandatory)]

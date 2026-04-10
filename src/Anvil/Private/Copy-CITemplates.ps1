@@ -24,6 +24,7 @@ function Copy-CITemplates {
             The number of CI template files processed.
     #>
     [CmdletBinding()]
+    [OutputType([int])]
     param(
         [Parameter(Mandatory)]
         [ValidateSet('GitHub', 'AzurePipelines', 'GitLab')]

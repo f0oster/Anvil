@@ -1,4 +1,14 @@
 function Get-FunctionContent {
+    <#
+    .SYNOPSIS
+        Returns the boilerplate content for a new function file.
+
+    .PARAMETER FunctionName
+        The name of the function to generate.
+
+    .PARAMETER Scope
+        Public functions include comment-based help. Private functions get a minimal template.
+    #>
     param(
         [string]$FunctionName,
 

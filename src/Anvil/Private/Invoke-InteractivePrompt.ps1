@@ -7,8 +7,13 @@ function Invoke-InteractivePrompt {
         Collects all New-AnvilModule parameters via interactive prompts.
         Values already provided via bound parameters are used as-is and
         not prompted for. Returns a hashtable of all resolved values.
+
+    .PARAMETER BoundParams
+        Hashtable of parameters already provided by the caller. Keys
+        matching prompt fields are skipped.
     #>
     [CmdletBinding()]
+    [OutputType([hashtable])]
     param(
         [Parameter(Mandatory)]
         [hashtable]$BoundParams

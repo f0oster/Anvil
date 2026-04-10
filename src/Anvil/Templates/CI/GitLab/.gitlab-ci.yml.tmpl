@@ -1,60 +1,45 @@
+# CI/CD Pipeline -- <%ModuleName%>
+
 stages:
-  - lint
-  - test
-  - package
+  - ci
   - publish
 
-variables:
-  PESTER_OUTPUT_FORMAT: JUnitXml
-
-.pwsh_template: &pwsh_defaults
+.pwsh_defaults: &pwsh_defaults
   image: mcr.microsoft.com/powershell:lts-ubuntu-22.04
   before_script:
     - pwsh -File ./build/bootstrap.ps1
 
-lint:
+ci:linux:
   <<: *pwsh_defaults
-  stage: lint
-  before_script:
-    - pwsh -File ./build/bootstrap.ps1 -Scope Build
+  stage: ci
   script:
-    - pwsh -Command "Invoke-Build -File ./build/module.build.ps1 -Task Lint"
-
-test:linux:
-  <<: *pwsh_defaults
-  stage: test
-  script:
-    - pwsh -Command "Invoke-Build -File ./build/module.build.ps1 -Task Test"
+    - pwsh -Command "Invoke-Build -File ./build/module.build.ps1"
   artifacts:
     when: always
     reports:
       junit: artifacts/testResults/unit-results.xml
     paths:
       - artifacts/testResults/
+      - artifacts/package/
+      - artifacts/archive/
 
-test:windows:
+ci:windows:
   <<: *pwsh_defaults
-  stage: test
+  stage: ci
   tags:
     - windows
   image: null
   script:
-    - pwsh -Command "Invoke-Build -File ./build/module.build.ps1 -Task Test"
+    - pwsh -Command "Invoke-Build -File ./build/module.build.ps1"
   artifacts:
     when: always
     reports:
       junit: artifacts/testResults/unit-results.xml
 
-package:
-  <<: *pwsh_defaults
-  stage: package
-  script:
-    - pwsh -Command "Invoke-Build -File ./build/module.build.ps1"
-  artifacts:
-    paths:
-      - artifacts/package/
-      - artifacts/archive/
-
+# To enable PSGallery publishing:
+#   1. Add PSGALLERY_API_KEY as a protected, masked CI/CD variable
+#   2. Uncomment the PSGALLERY_API_KEY variable below
+#   3. Change the script to include -Task Release
 publish:
   <<: *pwsh_defaults
   stage: publish
@@ -63,6 +48,14 @@ publish:
   script:
     - |
       $Version = $env:CI_COMMIT_TAG -replace '^v', ''
-      pwsh -Command "Invoke-Build -File ./build/module.build.ps1 -Task Release -NewVersion '$Version'"
+      if ($Version -notmatch '^\d+\.\d+\.\d+') {
+          throw "Invalid version format: '$Version'. Expected semver (e.g., 1.0.0)."
+      }
+      pwsh -Command "Invoke-Build -File ./build/module.build.ps1 -NewVersion '$Version'"
+  # variables:
+  #   PSGALLERY_API_KEY: $PSGALLERY_API_KEY
   environment:
     name: production
+  artifacts:
+    paths:
+      - artifacts/package/
