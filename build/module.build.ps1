@@ -220,15 +220,20 @@ task Docs {
     $MdDir = Join-Path -Path $script:DocsDir -ChildPath 'commands'
     $ExistingDocs = Get-ChildItem -Path $MdDir -Filter '*.md' -Recurse -ErrorAction SilentlyContinue
 
+    if (-not (Test-Path -Path $MdDir)) {
+        New-Item -Path $MdDir -ItemType Directory -Force | Out-Null
+    }
+
+    $ExistingDocs = Get-ChildItem -Path $MdDir -Filter '*.md' -Recurse -ErrorAction SilentlyContinue
+
     if ($ExistingDocs) {
         Update-MarkdownHelp -Path $MdDir | Out-Null
         Write-Build White "  Updated $($ExistingDocs.Count) existing doc(s)"
-    } else {
-        if (-not (Test-Path -Path $MdDir)) {
-            New-Item -Path $MdDir -ItemType Directory -Force | Out-Null
-        }
-        New-MarkdownHelp -Module $script:ModuleName -OutputFolder $MdDir -Force | Out-Null
-        Write-Build White '  Generated initial documentation'
+    }
+
+    $NewDocs = New-MarkdownHelp -Module $script:ModuleName -OutputFolder $MdDir -ErrorAction SilentlyContinue
+    if ($NewDocs) {
+        Write-Build White "  Generated $($NewDocs.Count) new doc(s)"
     }
 
     Write-BuildFooter 'Docs generation complete'
