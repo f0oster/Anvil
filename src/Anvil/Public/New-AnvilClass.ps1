@@ -61,7 +61,7 @@ function New-AnvilClass {
 
     # Resolve the project root
     if ($Path) {
-        $ProjectRoot = $Path
+        $StartPath = $Path
     } else {
         $Message = 'No -Path provided. The current directory will be searched, ' +
         'walking up the directory tree to find the project root (build/build.settings.psd1). ' +
@@ -69,40 +69,13 @@ function New-AnvilClass {
         if (-not $PSCmdlet.ShouldContinue($Message, 'Search for project root?')) {
             return
         }
-        $ProjectRoot = $PWD.Path
+        $StartPath = $PWD.Path
     }
 
-    # Walk up to find build/build.settings.psd1
-    $SearchDir = $ProjectRoot
-    while ($SearchDir -and -not (Test-Path (Join-Path $SearchDir 'build/build.settings.psd1'))) {
-        $Parent = Split-Path $SearchDir -Parent
-        if ($Parent -eq $SearchDir) {
-            $SearchDir = $null
-            break
-        }
-        $SearchDir = $Parent
-    }
-
-    if (-not $SearchDir) {
-        $ErrorParams = @{
-            Message      = "Could not find build/build.settings.psd1 in '$ProjectRoot' or any parent directory. Are you inside an Anvil project?"
-            Category     = 'ObjectNotFound'
-            TargetObject = $ProjectRoot
-        }
-        Write-Error @ErrorParams
-        return
-    }
-    $ProjectRoot = $SearchDir
-
-    # Read the module name from build settings
-    $SettingsPath = Join-Path $ProjectRoot 'build/build.settings.psd1'
-    $Settings = Import-PowerShellDataFile -Path $SettingsPath
-
-    if (-not $Settings.ModuleName) {
-        Write-Error "build/build.settings.psd1 does not contain a ModuleName key."
-        return
-    }
-    $ModuleName = $Settings.ModuleName
+    $Resolved = Resolve-AnvilProjectRoot -StartPath $StartPath
+    if (-not $Resolved) { return }
+    $ProjectRoot = $Resolved.ProjectRoot
+    $ModuleName = $Resolved.ModuleName
 
     # Build the class file path
     $ClassDir = Join-Path $ProjectRoot 'src' |
