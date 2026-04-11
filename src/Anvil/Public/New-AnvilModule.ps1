@@ -60,7 +60,7 @@ function New-AnvilModule {
 
     .PARAMETER IncludeDocs
         When set, the build pipeline adds a Docs task that generates markdown
-        and MAML help via Microsoft.PowerShell.PlatyPS.
+        and MAML help via platyPS.
 
     .PARAMETER CoverageThreshold
         Minimum code coverage percentage enforced by Pester during the Test
