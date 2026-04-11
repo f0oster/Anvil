@@ -20,12 +20,82 @@ AfterAll {
 Describe 'New-AnvilModule' -Tag 'Unit' {
 
     Context 'Non-interactive parameter validation' {
+        BeforeEach {
+            InModuleScope 'Anvil' {
+                Mock Resolve-AuthorName { $null }
+            }
+        }
+
         It 'throws when DestinationPath is missing' {
-            { New-AnvilModule -Name 'Test' -Author 'Dev' } | Should -Throw '*DestinationPath*'
+            { New-AnvilModule -Name 'Test' -Author 'Dev' } | Should -Throw '*DestinationPath*required*'
         }
 
         It 'throws when Author is missing' {
-            { New-AnvilModule -Name 'Test' -DestinationPath $TestDrive } | Should -Throw '*Author*'
+            { New-AnvilModule -Name 'Test' -DestinationPath $TestDrive } | Should -Throw '*Author*required*'
+        }
+    }
+
+    Context 'URI parameter validation' {
+        It 'rejects a non-URI string for ProjectUri' {
+            $Params = @{
+                Name            = 'UriTest'
+                DestinationPath = $TestDrive
+                Author          = 'Dev'
+                ProjectUri      = 'not-a-uri'
+            }
+            { New-AnvilModule @Params } | Should -Throw '*not a valid absolute URI*'
+        }
+
+        It 'rejects a relative URI for ProjectUri' {
+            $Params = @{
+                Name            = 'UriTest'
+                DestinationPath = $TestDrive
+                Author          = 'Dev'
+                ProjectUri      = 'github.com/user/repo'
+            }
+            { New-AnvilModule @Params } | Should -Throw '*not a valid absolute URI*'
+        }
+
+        It 'rejects a non-URI string for LicenseUri' {
+            $Params = @{
+                Name            = 'UriTest'
+                DestinationPath = $TestDrive
+                Author          = 'Dev'
+                LicenseUri      = 'just some text'
+            }
+            { New-AnvilModule @Params } | Should -Throw '*not a valid absolute URI*'
+        }
+
+        It 'rejects a relative URI for LicenseUri' {
+            $Params = @{
+                Name            = 'UriTest'
+                DestinationPath = $TestDrive
+                Author          = 'Dev'
+                LicenseUri      = 'example.com/license'
+            }
+            { New-AnvilModule @Params } | Should -Throw '*not a valid absolute URI*'
+        }
+
+        It 'accepts a valid absolute URI for ProjectUri' {
+            $Params = @{
+                Name            = 'UriValidTest'
+                DestinationPath = $TestDrive
+                Author          = 'Dev'
+                ProjectUri      = 'https://github.com/user/repo'
+                Force           = $true
+            }
+            { New-AnvilModule @Params } | Should -Not -Throw
+        }
+
+        It 'accepts an empty string for ProjectUri' {
+            $Params = @{
+                Name            = 'UriEmptyTest'
+                DestinationPath = $TestDrive
+                Author          = 'Dev'
+                ProjectUri      = ''
+                Force           = $true
+            }
+            { New-AnvilModule @Params } | Should -Not -Throw
         }
     }
 

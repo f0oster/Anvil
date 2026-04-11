@@ -15,8 +15,9 @@ function New-AnvilModule {
           - CI/CD workflows for the chosen provider (GitHub, Azure Pipelines, GitLab)
           - README, CONTRIBUTING, LICENSE, .editorconfig, VS Code config
 
-        When called without parameters, runs an interactive wizard that prompts
-        for each value. When parameters are provided, runs non-interactively.
+        Use -Interactive to launch a guided wizard that prompts for each value.
+        Without -Interactive, parameters are required and defaults are applied
+        silently for any optional values not specified.
 
     .PARAMETER Name
         The name of the new module. Must start with a letter and contain only
@@ -83,6 +84,10 @@ function New-AnvilModule {
         Initialises a git repository in the scaffolded project and creates an
         initial commit. Requires git to be available on PATH.
 
+    .PARAMETER Interactive
+        Launches the guided wizard, prompting for any values not already
+        provided via parameters. Pre-filled parameters are skipped.
+
     .PARAMETER PassThru
         Returns the full path of the generated project directory as a string.
 
@@ -93,9 +98,9 @@ function New-AnvilModule {
         System.String
 
     .EXAMPLE
-        New-AnvilModule
+        New-AnvilModule -Interactive
 
-        Runs the interactive wizard, prompting for all values.
+        Launches the guided wizard, prompting for all values.
 
     .EXAMPLE
         New-AnvilModule -Name 'NetworkTools' -DestinationPath '~/Projects' -Author 'Jane Doe'
@@ -167,9 +172,25 @@ function New-AnvilModule {
         [string[]]$Tags,
 
         [Parameter()]
+        [ValidateScript({
+                if ([string]::IsNullOrWhiteSpace($_)) { return $true }
+                $uri = $_ -as [System.Uri]
+                if (-not $uri -or -not $uri.IsAbsoluteUri) {
+                    throw "'$_' is not a valid absolute URI."
+                }
+                $true
+            })]
         [string]$ProjectUri,
 
         [Parameter()]
+        [ValidateScript({
+                if ([string]::IsNullOrWhiteSpace($_)) { return $true }
+                $uri = $_ -as [System.Uri]
+                if (-not $uri -or -not $uri.IsAbsoluteUri) {
+                    throw "'$_' is not a valid absolute URI."
+                }
+                $true
+            })]
         [string]$LicenseUri,
 
         [Parameter()]
@@ -179,44 +200,33 @@ function New-AnvilModule {
         [switch]$GitInit,
 
         [Parameter()]
+        [switch]$Interactive,
+
+        [Parameter()]
         [switch]$PassThru
     )
 
-    # Interactive mode when Name is not provided
-    $IsInteractive = -not $PSBoundParameters.ContainsKey('Name')
-
-    if ($IsInteractive) {
-        $Resolved = Invoke-InteractivePrompt -BoundParams $PSBoundParameters
-    } else {
-        # Apply defaults for non-interactive mode
-        $Resolved = @{
-            Name                 = $Name
-            DestinationPath      = $DestinationPath
-            Author               = $Author
-            Description          = if ($PSBoundParameters.ContainsKey('Description')) { $Description } else { 'A PowerShell module scaffolded by Anvil.' }
-            CompanyName          = if ($PSBoundParameters.ContainsKey('CompanyName')) { $CompanyName } else { '' }
-            MinPowerShellVersion = if ($PSBoundParameters.ContainsKey('MinPowerShellVersion')) { $MinPowerShellVersion } else { '5.1' }
-            CompatiblePSEditions = if ($PSBoundParameters.ContainsKey('CompatiblePSEditions')) { $CompatiblePSEditions } else { @('Desktop', 'Core') }
-            CIProvider           = if ($PSBoundParameters.ContainsKey('CIProvider')) { $CIProvider } else { 'GitHub' }
-            License              = if ($PSBoundParameters.ContainsKey('License')) { $License } else { 'MIT' }
-            IncludeDocs          = [bool]$IncludeDocs
-            CoverageThreshold    = if ($PSBoundParameters.ContainsKey('CoverageThreshold')) { $CoverageThreshold } else { 80 }
-            Tags                 = if ($PSBoundParameters.ContainsKey('Tags')) { $Tags } else { @() }
-            ProjectUri           = if ($PSBoundParameters.ContainsKey('ProjectUri')) { $ProjectUri } else { '' }
-            LicenseUri           = if ($PSBoundParameters.ContainsKey('LicenseUri')) { $LicenseUri } else { '' }
-            GitInit              = [bool]$GitInit
-            Force                = [bool]$Force
-            PassThru             = [bool]$PassThru
-        }
-
-        # Validate required params in non-interactive mode
-        if (-not $Resolved.DestinationPath) {
-            throw 'DestinationPath is required in non-interactive mode.'
-        }
-        if (-not $Resolved.Author) {
-            throw 'Author is required in non-interactive mode.'
-        }
+    $Defaults = @{
+        Description          = 'A PowerShell module scaffolded by Anvil.'
+        CompanyName          = ''
+        MinPowerShellVersion = '5.1'
+        CompatiblePSEditions = @('Desktop', 'Core')
+        CIProvider           = 'GitHub'
+        License              = 'MIT'
+        CoverageThreshold    = 80
+        IncludeDocs          = $false
+        Tags                 = @()
+        ProjectUri           = ''
+        LicenseUri           = ''
+        GitInit              = $false
     }
+
+    $PromptParams = @{
+        BoundParams = $PSBoundParameters
+        Defaults    = $Defaults
+        Interactive = [bool]$Interactive
+    }
+    $Resolved = Invoke-InteractivePrompt @PromptParams
 
     $Config = @{
         ModuleName           = $Resolved.Name

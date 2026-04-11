@@ -17,7 +17,7 @@ and CI/CD pipelines.
 New-AnvilModule [[-Name] <String>] [[-DestinationPath] <String>] [-Author <String>] [-Description <String>]
  [-CompanyName <String>] [-MinPowerShellVersion <String>] [-CompatiblePSEditions <String[]>]
  [-CIProvider <String>] [-License <String>] [-IncludeDocs] [-CoverageThreshold <Int32>] [-Tags <String[]>]
- [-ProjectUri <String>] [-LicenseUri <String>] [-Force] [-GitInit] [-PassThru]
+ [-ProjectUri <String>] [-LicenseUri <String>] [-Force] [-GitInit] [-Interactive] [-PassThru]
  [-ProgressAction <ActionPreference>] [-WhatIf] [-Confirm] [<CommonParameters>]
 ```
 
@@ -327,6 +327,22 @@ Accept wildcard characters: False
 Initialises a git repository in the scaffolded project and creates an
 initial commit.
 Requires git to be available on PATH.
+
+```yaml
+Type: SwitchParameter
+Parameter Sets: (All)
+Aliases:
+
+Required: False
+Position: Named
+Default value: False
+Accept pipeline input: False
+Accept wildcard characters: False
+```
+
+### -Interactive
+Launches the guided wizard, prompting for any values not already
+provided via parameters. Pre-filled parameters are skipped.
 
 ```yaml
 Type: SwitchParameter
