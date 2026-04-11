@@ -141,11 +141,6 @@ Yes. Set `-MinPowerShellVersion 5.1` and `-CompatiblePSEditions @('Desktop', 'Co
 
 The build tooling itself requires 7.2+ (because ModuleFast does), but the module you produce can target 5.1. These are separate concerns — you build on modern PowerShell and ship for whatever version your users need.
 
-### How is Anvil different from other scaffolders?
+### Anvil was heavily inspired by Catesta, but how does it differ?
 
-- **No Plaster dependency** — Anvil uses its own template engine with no XML schema
-- **Post-scaffolding tools** — `New-AnvilFunction`, `New-AnvilClass`, and `New-AnvilTest` for ongoing development
-- **Version strategy** — `0.0.0` placeholder with CI-injected versions from git tags
-- **Auto-formatting** — `Invoke-Formatter` runs before linting as part of the pipeline
-- **Custom lint rules** — project-local PSScriptAnalyzer rules in `build/analyzers/`
-- **Interactive mode** — running `New-AnvilModule` with no arguments starts a guided wizard
+Anvil doesn't use Plaster — it has its own template engine. More importantly, Anvil is designed to be more than a scaffolding tool and takes a far more opinionated approach. While Catesta generates a project and then steps away, Anvil stays with you throughout development. Commands like `New-AnvilFunction`, `Add-AnvilDependency`, and `Invoke-AnvilBootstrapDeps` are part of the day-to-day workflow of authoring and building modules.

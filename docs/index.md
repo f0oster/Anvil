@@ -20,16 +20,16 @@ A scaffolded project includes:
 - **CI/CD workflows** for GitHub Actions, Azure Pipelines, or GitLab CI with tag-triggered releases
 - **ModuleFast bootstrap** that installs build dependencies from a pinned manifest with zero prerequisite tooling
 
-After scaffolding, Anvil provides commands to add functions, classes, and tests to the project without leaving the terminal.
+After scaffolding, Anvil provides commands to add functions, classes, tests, and module dependencies to the project without leaving the terminal.
 
 ## Quick start
 
 ```powershell
 Install-Module -Name Anvil -Scope CurrentUser
-New-AnvilModule
+New-AnvilModule -Interactive
 ```
 
-With no arguments, Anvil runs an interactive wizard. It detects your name from `git config`, defaults to the current directory, and prompts for everything else. Press Enter to accept defaults.
+The `-Interactive` switch launches a guided wizard. It detects your name from `git config`, defaults to the current directory, and prompts for everything else. Press Enter to accept defaults.
 
 Or pass everything up front:
 
@@ -74,4 +74,7 @@ The first build installs Pester, PSScriptAnalyzer, InvokeBuild, and platyPS into
 | [New-AnvilFunction](commands/New-AnvilFunction.md) | Add a function and its test to a project |
 | [New-AnvilClass](commands/New-AnvilClass.md) | Add a PowerShell class and its test |
 | [New-AnvilTest](commands/New-AnvilTest.md) | Add a standalone test file |
+| [Add-AnvilDependency](commands/Add-AnvilDependency.md) | Declare a module dependency |
+| [Remove-AnvilDependency](commands/Remove-AnvilDependency.md) | Remove a module dependency |
+| [Invoke-AnvilBootstrapDeps](commands/Invoke-AnvilBootstrapDeps.md) | Install build tools and module dependencies |
 | [Get-AnvilTemplate](commands/Get-AnvilTemplate.md) | List available templates and CI providers |

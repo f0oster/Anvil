@@ -1,8 +1,6 @@
 @{
-    # Build toolchain for <%ModuleName%>
-    #
-    # Group modules by purpose.  Use any group names you like -- they become
-    # selectable scopes in bootstrap.ps1 via -Scope.
+    # Anvil build toolchain -- do not add module dependencies here.
+    # Use Add-AnvilDependency to manage module dependencies in requirements.psd1.
     #
     # Syntax per module:  'ModuleName' = 'VersionSpec'
     #   '5.7.1'     - exact version
@@ -22,10 +20,4 @@
     Docs = @{
         'platyPS' = '0.14.2'
     }
-
-    # Add your own scopes
-    # Deploy = @{
-    #     'Az.Accounts' = '>=2.0.0'
-    #     'Az.KeyVault' = 'latest'
-    # }
 }

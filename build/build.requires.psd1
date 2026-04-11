@@ -1,8 +1,6 @@
 @{
-    # Build toolchain for Anvil
-    #
-    # Group modules by purpose.  Use any group names you like -- they become
-    # selectable scopes in bootstrap.ps1 via -Scope.
+    # Anvil build toolchain -- do not add module dependencies here.
+    # Use Add-AnvilDependency to manage module dependencies in requirements.psd1.
     #
     # Syntax per module:  'ModuleName' = 'VersionSpec'
     #   '5.7.1'     - exact version

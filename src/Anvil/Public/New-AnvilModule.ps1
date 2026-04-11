@@ -244,7 +244,11 @@ function New-AnvilModule {
 
     if (Test-Path -Path $ProjectRoot) {
         if ($Resolved.Force) {
-            Remove-Item -Path $ProjectRoot -Recurse -Force
+            if ($PSCmdlet.ShouldProcess($ProjectRoot, 'Remove existing project directory')) {
+                Remove-Item -Path $ProjectRoot -Recurse -Force
+            } else {
+                return
+            }
         } else {
             throw "Destination already exists: $ProjectRoot -- remove it first, choose a different name, or use -Force."
         }

@@ -112,7 +112,7 @@ Produces the compiled module in `artifacts/package/<ModuleName>/`. This is the m
 
 1. **Copies static assets** — directories listed in the `AssetDirectories` setting (default: `Types/`, `Formats/`, `Assemblies/`), if they exist in source
 2. **Compiles the `.psm1`** — merges `Imports.ps1`, then `PrivateClasses/*.ps1`, `Private/*.ps1`, and `Public/*.ps1` into a single file in that order. The compiled module loads faster than dot-sourcing individual files at import time.
-3. **Generates the manifest** — creates a fresh `.psd1` with `FunctionsToExport` set to the Public function names.
+3. **Generates the manifest** — creates a fresh `.psd1` with `FunctionsToExport` set to the Public function names. If `requirements.psd1` exists, populates `RequiredModules` from it.
 4. **Generates MAML help** — if `docs/commands/` has markdown and platyPS is available, converts it to MAML XML in the staged module's `en-US/` directory for `Get-Help` support.
 5. **Injects version** — if `-NewVersion` was passed, the staged manifest gets that version instead of the source's `0.0.0`.
 

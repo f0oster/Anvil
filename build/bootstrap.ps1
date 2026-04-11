@@ -107,5 +107,32 @@ if ($Plan) {
     Install-ModuleFast @Params -Plan
 } else {
     Install-ModuleFast @Params
+}
+
+# Install module dependencies from requirements.psd1 if present
+$RequirementsPath = Join-Path -Path (Split-Path -Path $PSScriptRoot -Parent) -ChildPath 'requirements.psd1'
+if (Test-Path -Path $RequirementsPath) {
+    $ModuleDeps = Import-PowerShellDataFile -Path $RequirementsPath
+    if ($ModuleDeps.Count -gt 0) {
+        Write-Host "[bootstrap] Module dependencies ($($ModuleDeps.Count) modules)" -ForegroundColor Cyan
+        foreach ($Dep in $ModuleDeps.GetEnumerator() | Sort-Object Key) {
+            Write-Host "  $($Dep.Key) = $($Dep.Value)" -ForegroundColor DarkGray
+        }
+        $DepSpecs = $ModuleDeps.GetEnumerator() | ForEach-Object { "$($_.Key)=$($_.Value)" }
+        $DepParams = @{
+            Specification = $DepSpecs
+            Scope         = 'CurrentUser'
+            Confirm       = $false
+        }
+        if ($Update) { $DepParams['Update'] = $true }
+        if ($Plan) {
+            Install-ModuleFast @DepParams -Plan
+        } else {
+            Install-ModuleFast @DepParams
+        }
+    }
+}
+
+if (-not $Plan) {
     Write-Host '[bootstrap] Done.' -ForegroundColor Green
 }

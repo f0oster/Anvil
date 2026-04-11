@@ -14,13 +14,19 @@ Git is optional but recommended. If you pass `-GitInit`, Anvil creates a reposit
 
 ### The interactive way
 
-Running `New-AnvilModule` with no arguments starts a guided wizard:
+The `-Interactive` switch starts a guided wizard:
 
 ```powershell
-New-AnvilModule
+New-AnvilModule -Interactive
 ```
 
 You'll see prompts for module name, destination, author, description, CI provider, license, and more. Each prompt shows a default in brackets — press Enter to accept it. The author name is pulled from your git config if available.
+
+You can also pre-fill some parameters and let the wizard prompt for the rest:
+
+```powershell
+New-AnvilModule -Interactive -Name 'NetworkTools' -Author 'Jane Doe'
+```
 
 This is the fastest way to get started if you're exploring. Every value can be overridden later by editing the generated files.
 
@@ -46,7 +52,7 @@ $Params = @{
 New-AnvilModule @Params
 ```
 
-When `-Name` is provided, Anvil runs non-interactively. `-DestinationPath` and `-Author` are required in this mode.
+Without `-Interactive`, Anvil applies defaults silently for any optional parameters not specified. `-Name`, `-DestinationPath`, and `-Author` are required.
 
 ### What happens next
 
@@ -132,6 +138,30 @@ New-AnvilFunction -FunctionName 'Get-DnsRecord' -Scope Public -Location 'Dns'
 ```
 
 This creates `src/NetworkTools/Public/Dns/Get-DnsRecord.ps1` and `tests/unit/Public/Dns/Get-DnsRecord.Tests.ps1`. The module loader and build system discover files recursively, so nesting is purely organizational — it doesn't affect behavior.
+
+### Adding module dependencies
+
+If your module depends on other modules at runtime, declare them with `Add-AnvilDependency`:
+
+```powershell
+Add-AnvilDependency -Name 'Az.Storage' -Version '>=5.0.0'
+Add-AnvilDependency -Name 'ImportExcel' -Version '7.8.6'
+Add-AnvilDependency -Name 'PSFramework'
+```
+
+This updates two files: `requirements.psd1` (used by the bootstrap and build) and the source module manifest's `RequiredModules`. Version specs follow ModuleFast syntax: `'>=5.0.0'` for a minimum version, `'5.7.1'` for an exact pin, or `'latest'` (the default) for any version.
+
+After adding a dependency, install it:
+
+```powershell
+Invoke-AnvilBootstrapDeps
+```
+
+To remove a dependency:
+
+```powershell
+Remove-AnvilDependency -Name 'Az.Storage' -Force
+```
 
 ## Running tests
 

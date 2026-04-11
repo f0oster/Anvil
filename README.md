@@ -39,7 +39,7 @@ $Params = @{
 New-AnvilModule @Params
 ```
 
-Or run `New-AnvilModule` with no parameters for an interactive wizard.
+Or run `New-AnvilModule -Interactive` for a guided wizard.
 
 ### Build it
 
@@ -49,13 +49,15 @@ cd ~/Projects/NetworkTools
 Invoke-Build -File ./build/module.build.ps1
 ```
 
-### Add functions and classes
+### Add functions, classes, and dependencies
 
 ```powershell
 New-AnvilFunction -FunctionName 'Get-Widget' -Scope Public
 New-AnvilFunction -FunctionName 'Format-Row' -Scope Private
 New-AnvilClass -ClassName 'HttpClient'
 New-AnvilTest -Name 'Get-Widget' -Scope Public
+Add-AnvilDependency -Name 'Az.Storage' -Version '>=5.0.0'
+Invoke-AnvilBootstrapDeps
 ```
 
 ## Documentation

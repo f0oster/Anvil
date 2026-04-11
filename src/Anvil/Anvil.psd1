@@ -11,7 +11,7 @@
     RequiredModules = @()
     RequiredAssemblies = @()
     NestedModules = @()
-    
+
     ScriptsToProcess = @()
     TypesToProcess = @()
     FormatsToProcess = @()

@@ -162,7 +162,11 @@ task Lint {
             $Params['IncludeDefaultRules'] = $true
         }
     }
-    $Results = Invoke-ScriptAnalyzer @Params
+    $ExcludePaths = @(
+        Join-Path $script:ModuleDir 'Templates' | Join-Path -ChildPath 'Module' | Join-Path -ChildPath 'requirements.psd1'
+    )
+    $Results = Invoke-ScriptAnalyzer @Params |
+        Where-Object { $_.ScriptPath -notin $ExcludePaths }
     if ($Results) {
         $Results | Format-Table -AutoSize
         $Failures = $Results | Where-Object { $_.Severity -in $script:LintFailOn }
@@ -296,9 +300,29 @@ task Build {
         AliasesToExport    = @()
     }
 
+    # Populate RequiredModules from requirements.psd1
+    $RequirementsPath = Join-Path -Path $script:ProjectRoot -ChildPath 'requirements.psd1'
+    if (Test-Path -Path $RequirementsPath) {
+        $ModuleDeps = Import-PowerShellDataFile -Path $RequirementsPath
+        if ($ModuleDeps.Count -gt 0) {
+            $RequiredEntries = @()
+            foreach ($Key in ($ModuleDeps.Keys | Sort-Object)) {
+                $Spec = $ModuleDeps[$Key]
+                if ($Spec -eq 'latest') {
+                    $RequiredEntries += $Key
+                } elseif ($Spec -match '^>=(.+)$') {
+                    $RequiredEntries += @{ ModuleName = $Key; ModuleVersion = $Matches[1] }
+                } else {
+                    $RequiredEntries += @{ ModuleName = $Key; RequiredVersion = $Spec }
+                }
+            }
+            $ManifestParams.RequiredModules = $RequiredEntries
+            Write-Build White "  RequiredModules: $($RequiredEntries.Count) from requirements.psd1"
+        }
+    }
+
     # Carry through optional manifest properties
     if ($SourceManifest.CompatiblePSEditions)  { $ManifestParams.CompatiblePSEditions = $SourceManifest.CompatiblePSEditions }
-    if ($SourceManifest.RequiredModules)        { $ManifestParams.RequiredModules = $SourceManifest.RequiredModules }
     if ($SourceManifest.RequiredAssemblies)     { $ManifestParams.RequiredAssemblies = $SourceManifest.RequiredAssemblies }
     if ($SourceManifest.NestedModules)          { $ManifestParams.NestedModules = $SourceManifest.NestedModules }
     if ($SourceManifest.ScriptsToProcess)       { $ManifestParams.ScriptsToProcess = $SourceManifest.ScriptsToProcess }

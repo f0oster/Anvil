@@ -14,11 +14,12 @@ MyModule/
 │   ├── PrivateClasses/        PowerShell classes
 │   ├── Public/                Exported functions (one per file)
 │   └── Private/               Internal helper functions (one per file)
+├── requirements.psd1              Module dependencies (managed by Add-AnvilDependency)
 ├── build/
 │   ├── module.build.ps1       InvokeBuild task definitions
 │   ├── bootstrap.ps1          ModuleFast dependency installer
 │   ├── build.settings.psd1    Module name and coverage threshold
-│   ├── build.requires.psd1    Pinned build tool versions
+│   ├── build.requires.psd1    Anvil build toolchain versions
 │   └── analyzers/             Custom PSScriptAnalyzer rules
 ├── tests/
 │   ├── unit/                  Pester 5 unit tests
@@ -80,13 +81,15 @@ The convention is one function or class per file, with the filename matching the
 
 ### bootstrap.ps1
 
-A self-contained script that installs [ModuleFast](https://github.com/JustinGrote/ModuleFast) (if not present) and then uses it to install build dependencies from `build.requires.psd1`. It requires PowerShell 7.2+ because ModuleFast does.
+A self-contained script that installs [ModuleFast](https://github.com/JustinGrote/ModuleFast) (if not present) and then uses it to install build tools from `build.requires.psd1` and module dependencies from `requirements.psd1`. It requires PowerShell 7.2+ because ModuleFast does.
 
 Modules are installed to the user-scoped module path, not globally. The bootstrap is safe to run repeatedly — it's fast when dependencies are already installed.
 
+You can also run it via `Invoke-AnvilBootstrapDeps` from anywhere inside the project.
+
 ### build.requires.psd1
 
-Declares build tool versions grouped by scope:
+Declares Anvil's build toolchain versions grouped by scope. This file is for build tools only — module dependencies belong in `requirements.psd1`.
 
 ```powershell
 @{
@@ -103,7 +106,20 @@ Declares build tool versions grouped by scope:
 }
 ```
 
-You can add custom scopes (e.g. `Deploy`) and install selectively with `./build/bootstrap.ps1 -Scope Build,Test`. Versions are pinned for reproducible builds — update them deliberately, not accidentally.
+Install selectively with `./build/bootstrap.ps1 -Scope Build,Test`. Versions are pinned for reproducible builds — update them deliberately, not accidentally.
+
+### requirements.psd1
+
+Declares module dependencies that your module needs at runtime. Managed by `Add-AnvilDependency` and `Remove-AnvilDependency`:
+
+```powershell
+@{
+    'Az.Storage'  = '>=5.0.0'
+    'ImportExcel' = '7.8.6'
+}
+```
+
+The bootstrap installs these alongside the build tools. The Build task reads this file and populates `RequiredModules` in the published manifest automatically.
 
 ### build.settings.psd1
 

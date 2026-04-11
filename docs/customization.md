@@ -82,17 +82,22 @@ ExcludeRules = @(
 
 ## Runtime dependencies
 
-If your module depends on other modules at runtime (not just during build), add them to the manifest's `RequiredModules`:
+Use `Add-AnvilDependency` to declare modules your module needs at runtime:
 
 ```powershell
-RequiredModules = @(
-    @{ ModuleName = 'PSFramework'; ModuleVersion = '1.10.0' }
-)
+Add-AnvilDependency -Name 'PSFramework' -Version '>=1.10.0'
+Add-AnvilDependency -Name 'Az.Storage' -Version '>=5.0.0'
 ```
 
-PowerShell imports required modules automatically when your module is loaded. The Build task carries `RequiredModules` through to the published manifest.
+This updates `requirements.psd1` and the source manifest's `RequiredModules`. The bootstrap installs these during development, and the Build task populates `RequiredModules` in the published manifest automatically.
 
-Keep runtime dependencies separate from build dependencies. Build tools (InvokeBuild, Pester, PSScriptAnalyzer) belong in `build/build.requires.psd1`, not in the manifest. Users of your published module shouldn't need Pester installed.
+To remove a dependency:
+
+```powershell
+Remove-AnvilDependency -Name 'PSFramework' -Force
+```
+
+Build tools (InvokeBuild, Pester, PSScriptAnalyzer) belong in `build/build.requires.psd1`, not in `requirements.psd1`. Users of your published module shouldn't need Pester installed.
 
 ## Types and formatting
 
