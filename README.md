@@ -58,6 +58,7 @@ New-AnvilFunction -FunctionName 'Format-Row' -Scope Private
 New-AnvilClass -ClassName 'HttpClient'
 Add-AnvilDependency -Name 'Az.Storage' -Version '>=5.0.0'
 Invoke-AnvilBootstrapDeps
+Import-AnvilModule
 ```
 
 ## What you get

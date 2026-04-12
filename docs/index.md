@@ -77,4 +77,5 @@ The first build installs Pester, PSScriptAnalyzer, InvokeBuild, and platyPS into
 | [Add-AnvilDependency](commands/Add-AnvilDependency.md) | Declare a module dependency |
 | [Remove-AnvilDependency](commands/Remove-AnvilDependency.md) | Remove a module dependency |
 | [Invoke-AnvilBootstrapDeps](commands/Invoke-AnvilBootstrapDeps.md) | Install build tools and module dependencies |
+| [Import-AnvilModule](commands/Import-AnvilModule.md) | Import the development module from the current project |
 | [Get-AnvilTemplate](commands/Get-AnvilTemplate.md) | List available templates and CI providers |

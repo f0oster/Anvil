@@ -87,14 +87,21 @@ The scaffolded project comes with a sample public function (`Get-Greeting`), a s
 
 ## The development loop
 
-The typical workflow when developing a module looks like:
+Once your project is scaffolded and bootstrapped, the development cycle looks like this:
 
-1. Write or modify a function
-2. Write or update its test
-3. Run `Invoke-Build -Task Lint, Test` to validate
-4. Repeat
+1. **Scaffold a new function** with `New-AnvilFunction -FunctionName 'Get-Widget' -Scope Public`. This creates the function file with boilerplate and a matching test file.
 
-You don't need to run the full pipeline every time. `Lint, Test` catches most problems in seconds. Run the full pipeline before committing or pushing.
+2. **Write your implementation** in `src/<ModuleName>/Public/Get-Widget.ps1`. Public functions get comment-based help scaffolding. Private functions get a minimal template.
+
+3. **Write tests** in `tests/unit/Public/Get-Widget.Tests.ps1`. The generated test file already imports the module and has the right `BeforeAll`/`AfterAll` pattern — just add your assertions.
+
+4. **Add dependencies** if needed with `Add-AnvilDependency -Name 'Az.Storage' -Version '>=5.0.0'`, then run `Invoke-AnvilBootstrapDeps` to install them.
+
+5. **Reload the module** with `Import-AnvilModule`. This finds and re-imports the development version of your module from anywhere in the project tree, so you can test interactively in the terminal without typing out manifest paths.
+
+6. **Lint and test** with `Invoke-Build -Task Lint, Test`. This runs PSScriptAnalyzer and your Pester unit tests and reports on test coverage. For integration tests, run a full build.
+
+7. **Run the full pipeline** before committing: `Invoke-Build -File ./build/module.build.ps1`. This adds docs generation, module compilation, integration tests, and packaging on top of lint and test.
 
 ### Adding a public function
 
