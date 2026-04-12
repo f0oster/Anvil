@@ -1,6 +1,7 @@
 # Anvil
 
 [![CI][ci-badge]][ci-link]
+[![PowerShell Gallery][gallery-badge]][gallery-link]
 [![License][license-badge]][license-link]
 
 Anvil helps you create, develop, and ship PowerShell modules. It scaffolds a complete project structure with build pipelines, testing, linting, and CI/CD — then stays useful as you add functions, manage dependencies, and iterate.
@@ -103,5 +104,7 @@ Heavily inspired by [Catesta](https://github.com/techthoughts2/Catesta).
 <!-- Badge links -->
 [ci-badge]: https://github.com/f0oster/Anvil/actions/workflows/ci.yml/badge.svg?branch=main
 [ci-link]: https://github.com/f0oster/Anvil/actions/workflows/ci.yml
+[gallery-badge]: https://img.shields.io/powershellgallery/v/Anvil
+[gallery-link]: https://www.powershellgallery.com/packages/Anvil
 [license-badge]: https://img.shields.io/badge/license-MIT-blue
 [license-link]: https://github.com/f0oster/Anvil/blob/main/LICENSE
