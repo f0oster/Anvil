@@ -420,7 +420,7 @@ task Publish {
     if ($ManifestInfo.Version -eq [Version]'0.0.0') {
         throw "Cannot publish placeholder version 0.0.0. Pass -NewVersion to inject a release version: Invoke-Build -Task Release -NewVersion 1.0.0"
     }
-    Publish-Module -Path $Staging -NuGetApiKey $ApiKey -ErrorAction Stop
+    Publish-PSResource -Path $Staging -ApiKey $ApiKey -Repository PSGallery -ErrorAction Stop
     Write-BuildFooter "Published v$($ManifestInfo.Version)"
 }
 

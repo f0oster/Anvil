@@ -1,7 +1,7 @@
 # Release Pipeline -- Anvil
 # Triggered by version tags (v*).
 # Validates on all platforms, then publishes from Ubuntu.
-# Setup: add PSGALLERY_API_KEY as a repository secret.
+# Setup: add PSGALLERY_API_KEY as a secret in the 'psgallery' environment.
 
 name: Release
 
@@ -53,7 +53,7 @@ jobs:
     name: Publish
     needs: validate
     runs-on: ubuntu-latest
-    environment: production
+    environment: psgallery
     steps:
       - uses: actions/checkout@v5
 
@@ -69,15 +69,11 @@ jobs:
         shell: pwsh
         run: ./build/bootstrap.ps1
 
-      # To enable PSGallery publishing:
-      #   1. Add PSGALLERY_API_KEY as a repository secret
-      #   2. Uncomment the env block below
-      #   3. Change the run command to: Invoke-Build -File ./build/module.build.ps1 -Task Release -NewVersion '${{ steps.version.outputs.version }}'
       - name: Release build
         shell: pwsh
-        # env:
-        #   PSGALLERY_API_KEY: ${{ secrets.PSGALLERY_API_KEY }}
-        run: Invoke-Build -File ./build/module.build.ps1 -NewVersion '${{ steps.version.outputs.version }}'
+        env:
+          PSGALLERY_API_KEY: ${{ secrets.PSGALLERY_API_KEY }}
+        run: Invoke-Build -File ./build/module.build.ps1 -Task Release -NewVersion '${{ steps.version.outputs.version }}'
 
       - name: Upload release package
         uses: actions/upload-artifact@v6

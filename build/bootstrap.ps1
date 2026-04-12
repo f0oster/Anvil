@@ -94,7 +94,13 @@ foreach ($Mod in $Merged.GetEnumerator() | Sort-Object Key) {
 }
 
 # Install
-$Specs = $Merged.GetEnumerator() | ForEach-Object { "$($_.Key)=$($_.Value)" }
+$Specs = $Merged.GetEnumerator() | ForEach-Object {
+    if ($_.Value -match '^[><=!]') {
+        "$($_.Key)$($_.Value)"
+    } else {
+        "$($_.Key)=$($_.Value)"
+    }
+}
 
 $Params = @{
     Specification = $Specs
@@ -118,7 +124,13 @@ if (Test-Path -Path $RequirementsPath) {
         foreach ($Dep in $ModuleDeps.GetEnumerator() | Sort-Object Key) {
             Write-Host "  $($Dep.Key) = $($Dep.Value)" -ForegroundColor DarkGray
         }
-        $DepSpecs = $ModuleDeps.GetEnumerator() | ForEach-Object { "$($_.Key)=$($_.Value)" }
+        $DepSpecs = $ModuleDeps.GetEnumerator() | ForEach-Object {
+            if ($_.Value -match '^[><=!]') {
+                "$($_.Key)$($_.Value)"
+            } else {
+                "$($_.Key)=$($_.Value)"
+            }
+        }
         $DepParams = @{
             Specification = $DepSpecs
             Scope         = 'CurrentUser'

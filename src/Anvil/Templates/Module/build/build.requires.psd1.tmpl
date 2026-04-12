@@ -9,8 +9,9 @@
     #   See: https://github.com/JustinGrote/ModuleFast
 
     Build = @{
-        'InvokeBuild'      = '5.12.1'
-        'PSScriptAnalyzer' = '1.23.0'
+        'InvokeBuild'                        = '5.12.1'
+        'PSScriptAnalyzer'                   = '1.23.0'
+        'Microsoft.PowerShell.PSResourceGet' = '>=1.2.0'
     }
 
     Test = @{
