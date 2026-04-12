@@ -1,7 +1,7 @@
 # Release Pipeline -- <%ModuleName%>
 # Triggered by version tags (v*).
 # Validates on all platforms, then publishes.
-# Setup: add PSGALLERY_API_KEY as a pipeline variable (secret).
+# Setup: add PSGALLERY_API_KEY as a secret pipeline variable.
 
 trigger:
   tags:
@@ -66,7 +66,7 @@ stages:
     jobs:
       - deployment: PublishModule
         displayName: 'Release Build and Publish'
-        environment: production
+        environment: psgallery
         pool:
           vmImage: 'ubuntu-latest'
         variables:
@@ -84,18 +84,14 @@ stages:
                     filePath: ./build/bootstrap.ps1
                     pwsh: true
 
-                # To enable PSGallery publishing:
-                #   1. Add PSGALLERY_API_KEY as a secret pipeline variable
-                #   2. Uncomment the env block below
-                #   3. Change the script to: Invoke-Build -File ./build/module.build.ps1 -Task Release -NewVersion '$(releaseVersion)'
                 - task: PowerShell@2
                   displayName: 'Release build'
-                  # env:
-                  #   PSGALLERY_API_KEY: $(PSGALLERY_API_KEY)
+                  env:
+                    PSGALLERY_API_KEY: $(PSGALLERY_API_KEY)
                   inputs:
                     targetType: inline
                     pwsh: true
-                    script: Invoke-Build -File ./build/module.build.ps1 -NewVersion '$(releaseVersion)'
+                    script: Invoke-Build -File ./build/module.build.ps1 -Task Release -NewVersion '$(releaseVersion)'
 
                 - publish: ./artifacts/package
                   artifact: release-package

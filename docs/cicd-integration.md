@@ -40,9 +40,10 @@ The source `.psd1` is never modified. The version exists only in the CI workspac
 
 ### Setup
 
-1. Go to your repository **Settings > Secrets and variables > Actions**
-2. Add a secret named `PSGALLERY_API_KEY` with your PowerShell Gallery API key
-3. Optionally, create a `production` environment under **Settings > Environments** and add approval rules if you want manual release gates
+1. Go to your repository **Settings > Environments** and create an environment called `psgallery`
+2. Under the `psgallery` environment, add `PSGALLERY_API_KEY` as an environment secret with your PowerShell Gallery API key
+3. Optionally, add required reviewers to the environment for manual approval before publishing
+4. Optionally, restrict the environment to the `main` branch under **Deployment branches**
 
 ## Azure Pipelines
 
@@ -55,15 +56,11 @@ The source `.psd1` is never modified. The version exists only in the CI workspac
 
 ### Setup
 
-1. Create a pipeline from each YAML file in Azure DevOps
-2. Add `PSGALLERY_API_KEY` as a pipeline variable (mark it as secret)
-3. Create a `production` environment under **Pipelines > Environments** for deployment approval gates
+1. Go to **Pipelines > New pipeline** and create a pipeline from `azure-pipelines.yml`. This is your CI pipeline — name it something like `CI`.
+2. Create a second pipeline from `azure-pipelines-release.yml`. This is your release pipeline — name it something like `Release`.
+3. On the release pipeline, go to **Variables** and add `PSGALLERY_API_KEY` as a secret variable with your PowerShell Gallery API key.
 
-### Notes
-
-Azure Pipelines uses `$(Build.SourceBranchName)` to get the tag name. The release pipeline extracts the version and passes it through as a pipeline variable.
-
-Test results are published via the `PublishTestResults@2` task, which makes them visible in the Azure DevOps test tab.
+The release pipeline references a `psgallery` environment, which is created automatically on the first run. In Azure DevOps, environments don't hold secrets — secrets are pipeline variables. Environments are used for approval gates and deployment tracking. If you want manual sign-off before publishing, add an approval check under **Pipelines > Environments > psgallery**.
 
 ## GitLab CI
 
@@ -71,19 +68,21 @@ Test results are published via the `PublishTestResults@2` task, which makes them
 
 | File | Stages | Purpose |
 |------|--------|---------|
-| `.gitlab-ci.yml` | lint, test, package, publish | Combined CI and release |
+| `.gitlab-ci.yml` | ci, publish | Combined CI and release |
 
 The publish stage only runs for tags matching `v*` (controlled by a `rules` clause).
 
 ### Setup
 
-1. Go to **Settings > CI/CD > Variables**
-2. Add `PSGALLERY_API_KEY` as a protected, masked variable
-3. Create a `production` environment under **Operate > Environments**
+1. Go to **Operate > Environments** and create an environment called `psgallery`
+2. Go to **Settings > CI/CD > Variables** and add `PSGALLERY_API_KEY` as a protected, masked variable scoped to the `psgallery` environment
+3. Go to **Settings > Repository > Protected tags** and add `v*` as a protected tag pattern (required for protected variables to be injected)
+
+For approval gates on the free tier, add `when: manual` to the publish job. Protected environments with role-based approvals require GitLab Premium.
 
 ### Notes
 
-GitLab CI uses the `mcr.microsoft.com/powershell:lts-ubuntu-22.04` Docker image. The test stage runs on both Linux and Windows (if you have Windows runners tagged with `windows`). If you don't have Windows runners, remove or modify the `test:windows` job.
+GitLab CI uses the `mcr.microsoft.com/powershell:lts-ubuntu-22.04` Docker image and runs on Linux by default. A Windows CI job is included but commented out — it requires a self-hosted runner tagged `windows`. GitLab shared runners on gitlab.com are Linux only.
 
 Test results use JUnit format for GitLab's test report integration.
 
