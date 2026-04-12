@@ -17,7 +17,7 @@ Anvil helps you create, develop, and ship PowerShell modules. It scaffolds a com
   - PSScriptAnalyzer linting with custom rules that ship with the project, and a simple process for adding your own
   - Narkdown documentation generation using platyPS
   - Anvil bootstraps its own build dependencies and your runtime dependencies during development via [ModuleFast](https://github.com/JustinGrote/ModuleFast)
-- CI/CD workflows for GitHub Actions, Azure Pipelines (untested), and GitLab CI (untested)
+- CI/CD workflows for GitHub Actions, Azure Pipelines, and GitLab CI
 - Can build modules that are compatible with PowerShell 5.1, but authoring requires PowerShell >=7.2
 
 ## Installation
