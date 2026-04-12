@@ -11,103 +11,40 @@ cd <%ModuleName%>
 Invoke-Build -File ./build/module.build.ps1
 ```
 
-## Project layout
+## Development
 
-```
-<%ModuleName%>/
-├── src/<%ModuleName%>/        Module source
-│   ├── <%ModuleName%>.psd1    Manifest (runtime deps only)
-│   ├── <%ModuleName%>.psm1    Entry point
-│   ├── Imports.ps1            Module-scoped variables and initialization
-│   ├── PrivateClasses/        PowerShell classes (loaded before functions)
-│   ├── Public/                Exported functions
-│   └── Private/               Internal helpers
-├── build/
-│   ├── module.build.ps1       InvokeBuild task graph
-│   ├── bootstrap.ps1          Dependency installer
-│   └── build.requires.psd1    Pinned tool versions (ModuleFast)
-├── tests/
-│   ├── unit/                  Pester 5 unit tests
-│   └── integration/           Post-build artifact tests
-└── docs/                      Generated help (platyPS)
-```
-
-## Build tasks
-
-| Task              | Description                                            |
-|-------------------|--------------------------------------------------------|
-| `.` (default)     | Clean → Validate → Format → Lint → Test → Docs → Package |
-| `Format`          | Auto-fix formatting with Invoke-Formatter               |
-| `Lint`            | PSScriptAnalyzer with project settings                 |
-| `Test`            | Pester 5 unit tests + code coverage                    |
-| `IntegrationTest` | Post-build artifact validation                         |
-| `Docs`            | platyPS markdown and XML help generation               |
-| `Package`         | Stage module + create archive                          |
-| `Release`         | Version + full pipeline + publish to PSGallery          |
-
-## Adding a command
-
-1. Create `src/<%ModuleName%>/Public/Verb-Noun.ps1`
-2. Add the function name to `FunctionsToExport` in the manifest
-3. Create `tests/unit/Public/Verb-Noun.Tests.ps1`
-4. Run `Invoke-Build -File ./build/module.build.ps1 -Task Lint, Test`
-
-If you have Anvil installed, you can use `New-AnvilFunction` to generate both files:
+Add functions, classes, and dependencies using Anvil commands:
 
 ```powershell
-New-AnvilFunction -FunctionName 'Verb-Noun' -Scope Public
+New-AnvilFunction -FunctionName 'Get-Widget' -Scope Public
+New-AnvilFunction -FunctionName 'Format-Row' -Scope Private
+New-AnvilClass -ClassName 'WidgetResult'
+Add-AnvilDependency -Name 'Az.Storage' -Version '>=5.0.0'
+Invoke-AnvilBootstrapDeps
+Import-AnvilModule
 ```
 
-## Renaming the module
-
-To rename the module from `<%ModuleName%>` to a new name, update the following
-locations. Work through them in order -- update file contents first, then rename
-files and directories from deepest to shallowest.
-
-**Before you start:** commit any pending changes so you can revert if needed.
-
-### 1. File contents
-
-Replace every occurrence of the old module name in these files:
-
-| File | What to change |
-|------|---------------|
-| `build/build.settings.psd1` | `ModuleName = '<%ModuleName%>'` |
-| `src/<%ModuleName%>/<%ModuleName%>.psd1` | `RootModule = '<%ModuleName%>.psm1'` and any other references |
-| `tests/unit/<%ModuleName%>.Module.Tests.ps1` | `$ModuleName = '<%ModuleName%>'` and `Get-Module -Name '<%ModuleName%>'` |
-| `tests/unit/Public/*.Tests.ps1` | `$ModuleName = '<%ModuleName%>'` and `Get-Module '<%ModuleName%>'` |
-| `tests/unit/Private/*.Tests.ps1` | `$ModuleName = '<%ModuleName%>'`, `Get-Module '<%ModuleName%>'`, and `InModuleScope '<%ModuleName%>'` |
-| `README.md` | Project title and any references |
-
-A global find-and-replace across the project works well here. The module name
-appears as a literal string (in quotes or as a path segment), so a plain text
-search is sufficient.
-
-### 2. File renames
-
-```
-src/<%ModuleName%>/<%ModuleName%>.psd1  →  src/<%ModuleName%>/NewName.psd1
-src/<%ModuleName%>/<%ModuleName%>.psm1  →  src/<%ModuleName%>/NewName.psm1
-tests/unit/<%ModuleName%>.Module.Tests.ps1  →  tests/unit/NewName.Module.Tests.ps1
-```
-
-### 3. Directory rename
-
-```
-src/<%ModuleName%>/  →  src/NewName/
-```
-
-Rename the directory last. All file contents and filenames already reference the
-new name at this point.
-
-### 4. Verify
+Lint and test:
 
 ```powershell
 Invoke-Build -File ./build/module.build.ps1 -Task Lint, Test
 ```
 
-If everything passes, commit the rename as a single commit so it is easy to
-review or revert.
+## Guides
+
+This project was scaffolded with [Anvil](https://github.com/f0oster/Anvil). The following guides are included in the `getting-started/` directory:
+
+| Guide | What it covers |
+|-------|---------------|
+| [Getting Started](getting-started/getting-started.md) | Scaffold a project, bootstrap, first build |
+| [Development](getting-started/development.md) | Adding functions, classes, dependencies, testing, the daily workflow |
+| [Project Structure](getting-started/project-structure.md) | What every file and directory does |
+| [Build Pipeline](getting-started/build-pipeline.md) | Every build task explained, settings reference |
+| [CI/CD Integration](getting-started/cicd-integration.md) | GitHub Actions, Azure Pipelines, GitLab CI setup |
+| [Customization](getting-started/customization.md) | Custom lint rules, types, formats, build tasks |
+| [FAQ](getting-started/faq.md) | Common questions and troubleshooting |
+
+For the full Anvil command reference, see the [Anvil documentation](https://github.com/f0oster/Anvil/tree/main/docs).
 
 ## License
 

@@ -98,7 +98,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup and guidelines.
 
 ## Acknowledgements
 
-Heavily inspired by [Catesta](https://github.com/techthoughts2/Catesta). See the [FAQ](docs/faq.md#anvil-was-heavily-inspired-by-catesta-but-how-does-it-differ) for how Anvil differs.
+Heavily inspired by [Catesta](https://github.com/techthoughts2/Catesta).
 
 <!-- Badge links -->
 [ci-badge]: https://github.com/f0oster/Anvil/actions/workflows/ci.yml/badge.svg?branch=main
