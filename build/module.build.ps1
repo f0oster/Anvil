@@ -258,7 +258,7 @@ task Build {
 
     $ImportsPath = Join-Path -Path $script:ModuleDir -ChildPath 'Imports.ps1'
     if (Test-Path -Path $ImportsPath) {
-        [void]$Sb.AppendLine('# --- Imports ---')
+        [void]$Sb.AppendLine('# --- Module initialization ---')
         [void]$Sb.AppendLine((Get-Content -Path $ImportsPath -Raw))
         [void]$Sb.AppendLine('')
     }

@@ -1,36 +1,30 @@
 # FAQ
 
-## Building
+## Why create Anvil when similar projects like ModuleBuilder, Catesta, Stucco, etc. exist?
 
-### Why does the version say 0.0.0?
+Anvil grew out of using Catesta across several projects. Eventually I decided to build something in line with my own preferences. A simple build system I could understand and modify without the complexity of Plaster, and authoring tools that streamline some of the more tedious areas of module authoring.
 
-By design. The source manifest uses `0.0.0` as a placeholder. Real versions are injected at build time:
+
+## Why is the version in my build 0.0.0?
+
+This is actually by design. The source manifest (the development manifest) uses `0.0.0` as a placeholder. The version is injected at build time:
 
 ```powershell
-Invoke-Build -Task Release -NewVersion 1.0.0
+Invoke-Build -Task Release -NewVersion x.x.x
 ```
 
-In CI, the version is extracted from the git tag automatically. The source `.psd1` is never modified. This avoids "version bump" commits and ensures the git tag is the single source of truth. See [Build Pipeline > Version Management](build-pipeline.md#version-management).
+In CI, the version is extracted from the git tag automatically, and no references to the modules version is referenced anywhere in the repository itself. This avoids "version bump" commits and means that git tags on your repository are the single source of truth for module versions. See [Build Pipeline > Version Management](build-pipeline.md#version-management).
 
-### The first build after scaffolding fails
+## The first build after scaffolding fails
 
 This shouldn't happen. The scaffolded project includes sample functions and tests that should pass out of the box. If the build fails, check:
 
 - **Are you running PowerShell 7.2+?** The bootstrap script requires it because ModuleFast does. Run `$PSVersionTable.PSVersion` to check.
-- **Did bootstrap succeed?** If the PowerShell Gallery is down or rate-limiting, module installation fails. Retry.
 - **Are you running from the project root?** InvokeBuild expects to be invoked from the directory containing the build script, or with an explicit `-File` path.
 
 If none of these help, this is a bug in Anvil — please report it.
 
-### What does the Format task actually change?
-
-It runs `Invoke-Formatter` (from PSScriptAnalyzer) on every `.ps1` file in your module source directory using the rules in `PSScriptAnalyzerSettings.psd1`. It auto-fixes indentation, whitespace around operators, brace placement (OTBS style), and similar formatting issues. Changes are applied in place.
-
-### How do I skip the Docs task?
-
-Set `IncludeDocs = $false` in `build/build.settings.psd1`. The Docs task will skip automatically during the pipeline.
-
-### The Publish task refuses to run
+## The Publish task refuses to run
 
 It checks two things:
 1. The `PSGALLERY_API_KEY` environment variable must be set
@@ -42,105 +36,18 @@ If you see "Cannot publish placeholder version 0.0.0", pass `-NewVersion`:
 Invoke-Build -Task Release -NewVersion 1.0.0
 ```
 
-## Testing
+## My class tests fail after changing the class
 
-### How do I test a private function?
+PowerShell classes are tied to the .NET type system. `Import-Module -Force` reloads functions but does not update class definitions. You must start a new PowerShell session to pick up class changes. This is a PowerShell limitation, not a Pester or Anvil issue. See [Development > Adding classes](development.md#adding-classes) for more on class quirks.
 
-Use Pester's `InModuleScope` inside individual `It` blocks:
-
-```powershell
-It 'formats the output correctly' {
-    InModuleScope 'MyModule' {
-        Format-Internal -Name 'test' | Should -Be 'expected'
-    }
-}
-```
-
-Don't wrap `Describe` or `Context` in `InModuleScope` — only `It` blocks.
-
-### How do I pass data into InModuleScope?
-
-Variables from the test scope aren't visible inside `InModuleScope`. Use `-ArgumentList` with a matching `param()` block:
-
-```powershell
-It 'validates the configuration' {
-    $Config = @{ Name = 'Test'; Timeout = 30 }
-    InModuleScope 'MyModule' -ArgumentList $Config {
-        param($Config)
-        Assert-ValidConfig -Configuration $Config | Should -Not -Throw
-    }
-}
-```
-
-### My class tests fail after changing the class
-
-PowerShell classes are tied to the .NET type system. `Import-Module -Force` reloads functions but does not update class definitions. You must start a new PowerShell session to pick up class changes.
-
-This is a PowerShell limitation, not a Pester or Anvil issue. It affects development workflow but not CI (CI always starts with a fresh session).
-
-### What's the coverage threshold and how do I change it?
-
-The default is 80%. Pester fails the Test task if coverage drops below this. Change `CoverageThreshold` in `build/build.settings.psd1` to any value from 0 to 100. Set it to 0 to disable coverage enforcement.
-
-See [Build Pipeline > Build settings](build-pipeline.md#build-settings) for all available settings.
-
-### Why does my test name with angle brackets fail?
-
-Pester 5 uses `<VariableName>` syntax in test names for `-ForEach` variable expansion. If your `It` description contains literal angle brackets (like `It 'replaces <%Token%> in content'`), Pester tries to expand them as template variables and fails.
-
-Use a description that avoids angle brackets, or build the string without them in the test name.
-
-## Linting
-
-### How do I add my own lint rules?
-
-Create a `.psm1` file in `build/analyzers/`. The Lint task discovers all `.psm1` files in that directory automatically. See [Customization > Custom PSScriptAnalyzer Rules](customization.md#custom-psscriptanalyzer-rules) for a complete example.
-
-### How do I disable a rule?
-
-Add the rule name to `ExcludeRules` in `PSScriptAnalyzerSettings.psd1`. This works for both built-in PSSA rules and custom rules:
-
-```powershell
-ExcludeRules = @(
-    'PSAvoidUsingWriteHost'    # built-in
-    'AvoidWriteOutput'         # custom
-)
-```
-
-## Documentation
-
-### Where do the docs/commands/ markdown files come from?
-
-They're generated by [platyPS](https://github.com/PowerShell/platyPS) from your functions' comment-based help. The first time you run `Invoke-Build -Task Docs`, platyPS creates a markdown file per exported function. On subsequent runs, it updates parameter metadata and syntax while preserving any manual edits you've made.
-
-The generated files are committed to source and maintained as part of your project. Treat them as editable documentation, not throwaway output.
-
-### Why is there a `{{ Fill ProgressAction Description }}` in my docs?
+## Why is there a `{{ Fill ProgressAction Description }}` in my docs?
 
 The `-ProgressAction` common parameter was introduced in PowerShell 7.4. platyPS v0.14.2 predates this parameter and doesn't know how to describe it. This placeholder appears in every function's documentation.
 
 You can safely replace it with a description like "Determines how the cmdlet responds to progress updates" or leave it as-is — it doesn't affect `Get-Help` output.
 
-### Where does the MAML help XML come from?
-
-The Build task converts `docs/commands/*.md` to MAML XML in the staged module's `en-US/` directory. This only exists in build output, never in source. If platyPS isn't installed or no markdown exists, the Build task skips MAML generation and the module works fine without `Get-Help` content.
-
-## Module design
-
-### Why is FunctionsToExport commented out in the source manifest?
-
-The Build task generates `FunctionsToExport` automatically from the files in `Public/`. You never need to maintain the export list — adding a file to `Public/` is enough.
-
-### Why are there sample functions in the scaffolded project?
-
-The sample `Get-Greeting` (public), `Format-GreetingText` (private), and `GreetingBuilder` (class) serve two purposes: they demonstrate the expected patterns, and they ensure the first build passes with all tests green. Delete them when you start adding your own code.
-
-### Can I target Windows PowerShell 5.1?
+## Can I target Windows PowerShell 5.1?
 
 Yes. Set `-MinPowerShellVersion 5.1` and `-CompatiblePSEditions @('Desktop', 'Core')` when scaffolding. The generated module will work on both Windows PowerShell and PowerShell 7+.
 
-The build tooling itself requires 7.2+ (because ModuleFast does), but the module you produce can target 5.1. These are separate concerns — you build on modern PowerShell and ship for whatever version your users need.
-
-### Anvil was heavily inspired by Catesta, but how does it differ?
-
-Anvil doesn't use Plaster — it has its own template engine. More importantly, Anvil is designed to be more than a scaffolding tool and takes a far more opinionated approach. While Catesta generates a project and then steps away, Anvil stays with you throughout development. Commands like `New-AnvilFunction`, `Add-AnvilDependency`, and `Invoke-AnvilBootstrapDeps` are part of the day-to-day workflow of authoring and building modules.
+The build tooling itself requires 7.2+ (because ModuleFast does), but the module you produce can target 5.1. You build on modern PowerShell and ship for whatever version your users need.

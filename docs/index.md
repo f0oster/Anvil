@@ -29,42 +29,19 @@ Install-Module -Name Anvil -Scope CurrentUser
 New-AnvilModule -Interactive
 ```
 
-The `-Interactive` switch launches a guided wizard. It detects your name from `git config`, defaults to the current directory, and prompts for everything else. Press Enter to accept defaults.
-
-Or pass everything up front:
-
-```powershell
-$Params = @{
-    Name            = 'NetworkTools'
-    DestinationPath = '~/Projects'
-    Author          = 'Jane Doe'
-    CIProvider      = 'GitHub'
-    IncludeDocs     = $true
-    GitInit         = $true
-}
-New-AnvilModule @Params
-```
-
-Then build:
-
-```powershell
-cd ~/Projects/NetworkTools
-./build/bootstrap.ps1
-Invoke-Build -File ./build/module.build.ps1
-```
-
-The first build installs Pester, PSScriptAnalyzer, InvokeBuild, and platyPS into a user-scoped location via ModuleFast, then runs the full pipeline. Subsequent builds skip the install if the tools are already present.
+See [Getting Started](getting-started.md) for the full walkthrough.
 
 ## Documentation
 
 | Guide | What it covers |
 |-------|---------------|
-| [Getting Started](getting-started.md) | Create a module, add functions, run tests, build |
+| [Getting Started](getting-started.md) | Scaffold a project, bootstrap, first build |
+| [Development](development.md) | Adding functions, classes, dependencies, testing, the daily workflow |
 | [Project Structure](project-structure.md) | What every file and directory does |
-| [Build Pipeline](build-pipeline.md) | Every build task explained, with customization guidance |
+| [Build Pipeline](build-pipeline.md) | Every build task explained, settings reference |
 | [CI/CD Integration](cicd-integration.md) | GitHub Actions, Azure Pipelines, GitLab CI setup |
-| [Customization](customization.md) | Classes, custom lint rules, types, formats, and more |
-| [FAQ](faq.md) | Common issues and how to resolve them |
+| [Customization](customization.md) | Custom lint rules, types, formats, build tasks |
+| [FAQ](faq.md) | Common issues and troubleshooting |
 
 ## Command reference
 

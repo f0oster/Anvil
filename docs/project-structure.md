@@ -60,14 +60,7 @@ It exports only the Public functions. During compilation, this file is replaced 
 
 ### Imports.ps1
 
-This file runs before anything else loads. Use it for `$script:` variables, assembly loading, or other initialization that your functions and classes depend on:
-
-```powershell
-$script:ResourcePath = Join-Path -Path $PSScriptRoot -ChildPath 'Resources'
-$script:DefaultTimeout = 30
-```
-
-At build time, this content is included in the compiled module.
+Runs before any classes or functions load. Use it for `$script:` variables, assembly loading, or other module-wide initialization. See [Development > Module initialization](development.md#module-initialization-importsps1) for details and examples.
 
 ### Public, Private, PrivateClasses
 

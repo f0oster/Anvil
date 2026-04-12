@@ -130,7 +130,7 @@ Reports the current version and confirms what `-NewVersion` or `-Prerelease` wil
 
 ### Publish
 
-Publishes the staged module to the PowerShell Gallery using `Publish-Module`. Requires the `PSGALLERY_API_KEY` environment variable.
+Publishes the staged module to the PowerShell Gallery using `Publish-PSResource`. Requires the `PSGALLERY_API_KEY` environment variable.
 
 The task has two safety checks:
 - Refuses to run without an API key

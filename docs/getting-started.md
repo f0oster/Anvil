@@ -85,111 +85,12 @@ The build pipeline then runs: Clean, Validate, Format, Lint, Test, Docs, Build, 
 
 The scaffolded project comes with a sample public function (`Get-Greeting`), a sample private function (`Format-GreetingText`), a sample class (`GreetingBuilder`), and tests for all three. The first build should pass out of the box — if it doesn't, that's a bug in Anvil.
 
-## The development loop
-
-Once your project is scaffolded and bootstrapped, the development cycle looks like this:
-
-1. **Scaffold a new function** with `New-AnvilFunction -FunctionName 'Get-Widget' -Scope Public`. This creates the function file with boilerplate and a matching test file.
-
-2. **Write your implementation** in `src/<ModuleName>/Public/Get-Widget.ps1`. Public functions get comment-based help scaffolding. Private functions get a minimal template.
-
-3. **Write tests** in `tests/unit/Public/Get-Widget.Tests.ps1`. The generated test file already imports the module and has the right `BeforeAll`/`AfterAll` pattern — just add your assertions.
-
-4. **Add dependencies** if needed with `Add-AnvilDependency -Name 'Az.Storage' -Version '>=5.0.0'`, then run `Invoke-AnvilBootstrapDeps` to install them.
-
-5. **Reload the module** with `Import-AnvilModule`. This finds and re-imports the development version of your module from anywhere in the project tree, so you can test interactively in the terminal without typing out manifest paths.
-
-6. **Lint and test** with `Invoke-Build -Task Lint, Test`. This runs PSScriptAnalyzer and your Pester unit tests and reports on test coverage. For integration tests, run a full build.
-
-7. **Run the full pipeline** before committing: `Invoke-Build -File ./build/module.build.ps1`. This adds docs generation, module compilation, integration tests, and packaging on top of lint and test.
-
-### Adding a public function
-
-```powershell
-New-AnvilFunction -FunctionName 'Test-NetworkConnection' -Scope Public
-```
-
-This creates two files:
-
-- `src/NetworkTools/Public/Test-NetworkConnection.ps1` — a function scaffold with `[CmdletBinding()]`, `[OutputType()]`, and a comment-based help block
-- `tests/unit/Public/Test-NetworkConnection.Tests.ps1` — a Pester test scaffold with module import, a placeholder test, and the standard BeforeAll/AfterAll pattern
-
-Open the function file, replace the placeholder logic, then open the test file and write real assertions. The scaffolds are starting points, not finished code.
-
-Public function names must use an [approved PowerShell verb](https://learn.microsoft.com/en-us/powershell/scripting/developer/cmdlet/approved-verbs-for-windows-powershell-commands). Anvil validates this and rejects names like `Fetch-Data`. If you have a good reason to use a non-standard verb, pass `-SkipVerbCheck`.
-
-### Adding a private function
-
-```powershell
-New-AnvilFunction -FunctionName 'Resolve-HostAddress' -Scope Private
-```
-
-Private functions don't need approved verbs, don't get comment-based help by default, and their tests use `InModuleScope` to reach inside the module. They're internal helpers — not visible to users of your module.
-
-### Adding a class
-
-```powershell
-New-AnvilClass -ClassName 'ConnectionResult'
-```
-
-Classes go in `PrivateClasses/` and are loaded before any functions, so your functions can use them. The generated test uses `InModuleScope` to instantiate the class and includes a test verifying it's not accessible outside the module.
-
-Be aware that PowerShell classes have quirks. The most important one: **`Import-Module -Force` does not reload class definitions**. If you change a class, you must start a new PowerShell session to pick up the change. This is a PowerShell limitation, not an Anvil issue. See [Customization](customization.md) for more class-specific guidance.
-
-### Organizing with subdirectories
-
-As your module grows, you can organize functions into subdirectories:
-
-```powershell
-New-AnvilFunction -FunctionName 'Get-DnsRecord' -Scope Public -Location 'Dns'
-```
-
-This creates `src/NetworkTools/Public/Dns/Get-DnsRecord.ps1` and `tests/unit/Public/Dns/Get-DnsRecord.Tests.ps1`. The module loader and build system discover files recursively, so nesting is purely organizational — it doesn't affect behavior.
-
-### Adding module dependencies
-
-If your module depends on other modules at runtime, declare them with `Add-AnvilDependency`:
-
-```powershell
-Add-AnvilDependency -Name 'Az.Storage' -Version '>=5.0.0'
-Add-AnvilDependency -Name 'ImportExcel' -Version '7.8.6'
-Add-AnvilDependency -Name 'PSFramework'
-```
-
-This updates two files: `requirements.psd1` (used by the bootstrap and build) and the source module manifest's `RequiredModules`. Version specs follow ModuleFast syntax: `'>=5.0.0'` for a minimum version, `'5.7.1'` for an exact pin, or `'latest'` (the default) for any version.
-
-After adding a dependency, install it:
-
-```powershell
-Invoke-AnvilBootstrapDeps
-```
-
-To remove a dependency:
-
-```powershell
-Remove-AnvilDependency -Name 'Az.Storage' -Force
-```
-
-## Running tests
-
-```powershell
-# Run all unit tests
-Invoke-Build -File ./build/module.build.ps1 -Task Test
-
-# Run a single test file directly
-Invoke-Pester -Path tests/unit/Public/Test-NetworkConnection.Tests.ps1
-
-# Run tests with inline coverage in VS Code
-Invoke-Build -File ./build/module.build.ps1 -Task DevCC
-```
-
-The DevCC task generates a `coverage.xml` file in Coverage Gutters format. Install the [Coverage Gutters](https://marketplace.visualstudio.com/items?itemName=ryanluker.vscode-coverage-gutters) VS Code extension to see coverage inline in your editor.
-
 ## What to do next
 
-At this point you have a working module with one sample function. The next steps depend on what you're building:
+At this point you have a working module with sample code and a green build. Read [Development](development.md) to learn the day-to-day workflow — adding functions, managing dependencies, running tests, and building.
 
-- **Replace the sample code.** Delete `Get-Greeting.ps1`, `Format-GreetingText.ps1`, `GreetingBuilder.ps1` and their tests. Add your own functions with `New-AnvilFunction`.
-- **Set up CI.** Push to GitHub/Azure DevOps/GitLab and configure the generated workflow. See [CI/CD Integration](cicd-integration.md).
-- **Understand the build.** Read [Build Pipeline](build-pipeline.md) to learn what each task does and how to customize it.
-- **Explore the project layout.** Read [Project Structure](project-structure.md) to understand where everything lives and why.
+Other useful references:
+
+- [Project Structure](project-structure.md) — what every file and directory does
+- [Build Pipeline](build-pipeline.md) — every build task explained
+- [CI/CD Integration](cicd-integration.md) — setting up GitHub Actions, Azure Pipelines, or GitLab CI

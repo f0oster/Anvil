@@ -79,11 +79,12 @@ NetworkTools/
 
 ## Documentation
 
-- [Getting Started](docs/getting-started.md) — create a module, add functions, run tests, build
-- [Project Structure](docs/project-structure.md) — overview of an Anvil authored module
-- [Build Pipeline](docs/build-pipeline.md) — task reference and customization
+- [Getting Started](docs/getting-started.md) — scaffold a project, bootstrap, first build
+- [Development](docs/development.md) — adding functions, classes, dependencies, testing, the daily workflow
+- [Project Structure](docs/project-structure.md) — what every file and directory does
+- [Build Pipeline](docs/build-pipeline.md) — every build task explained, settings reference
 - [CI/CD Integration](docs/cicd-integration.md) — GitHub Actions, Azure Pipelines, GitLab CI
-- [Customization](docs/customization.md) — classes, dependencies, custom linting, types, formats
+- [Customization](docs/customization.md) — custom lint rules, types, formats, build tasks
 - [FAQ](docs/faq.md) — common questions and troubleshooting
 - [Command Reference](docs/commands/) — detailed help for all commands
 
