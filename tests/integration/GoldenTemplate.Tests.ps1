@@ -189,6 +189,21 @@ Describe 'New-AnvilModule golden template' -Tag 'Integration' {
         }
     }
 
+    Context 'Anvil version stamp' {
+        It 'creates .ANVIL_VERSION' {
+            Join-Path -Path $script:ProjectPath -ChildPath '.ANVIL_VERSION' | Should -Exist
+        }
+        It 'contains a valid version string' {
+            $Version = Get-Content -Path (Join-Path $script:ProjectPath '.ANVIL_VERSION')
+            $Version -as [version] | Should -Not -BeNullOrEmpty
+        }
+        It 'matches the running Anvil module version' {
+            $Version = Get-Content -Path (Join-Path $script:ProjectPath '.ANVIL_VERSION')
+            $Expected = (Get-Module -Name 'Anvil').Version.ToString()
+            $Version | Should -Be $Expected
+        }
+    }
+
     Context 'No input mutation' {
         It 'does not mutate a hashtable passed to the same parameters' {
             $OriginalHash = @{ SomeKey = 'SomeValue' }

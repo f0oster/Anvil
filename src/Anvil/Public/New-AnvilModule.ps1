@@ -318,6 +318,10 @@ function New-AnvilModule {
             }
         }
 
+        # 5. Write Anvil version stamp
+        $AnvilVersion = (Get-Module -Name 'Anvil').Version.ToString()
+        Set-Content -Path (Join-Path $ProjectRoot '.ANVIL_VERSION') -Value $AnvilVersion -NoNewline
+
         Write-Host ''
         Write-Host "[Anvil] Project '$($Resolved.Name)' scaffolded successfully!" -ForegroundColor Green
         Write-Host "[Anvil] Next steps:" -ForegroundColor White
@@ -326,7 +330,7 @@ function New-AnvilModule {
         Write-Host "  Invoke-Build -File ./build/module.build.ps1" -ForegroundColor White
         Write-Host ''
 
-        # 5. Optionally initialise a git repository
+        # 6. Optionally initialise a git repository
         if ($Resolved.GitInit) {
             $GitCmd = Get-Command -Name git -ErrorAction SilentlyContinue
             if ($GitCmd) {
