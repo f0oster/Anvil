@@ -5,7 +5,7 @@
     Author            = 'f0oster'
     CompanyName       = ''
     Copyright         = '(c) 2026 f0oster. All rights reserved.'
-    Description       = 'Scaffolds production-grade PowerShell module projects with opinionated build, test, lint, docs, and CI/CD pipelines.'
+    Description       = 'PowerShell module scaffolding and authoring tool with built-in build, test, lint, and CI/CD pipelines.'
     PowerShellVersion = '7.2'
 
     RequiredModules = @()
@@ -23,7 +23,7 @@
 
     PrivateData = @{
         PSData = @{
-            Tags         = @('Module', 'Scaffold', 'Template', 'Build', 'CI', 'Pester', 'InvokeBuild')
+            Tags         = @('Module', 'Scaffold', 'Template', 'Build', 'CI', 'Pester', 'InvokeBuild', 'Testing', 'Linting', 'DevOps', 'PSScriptAnalyzer', 'Authoring')
             LicenseUri   = 'https://github.com/f0oster/Anvil/blob/main/LICENSE'
             ProjectUri   = 'https://github.com/f0oster/Anvil'
             ReleaseNotes = ''

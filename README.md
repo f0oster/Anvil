@@ -5,7 +5,7 @@
 
 Anvil helps you create, develop, and ship PowerShell modules. It scaffolds a complete project structure with build pipelines, testing, linting, and CI/CD — then stays useful as you add functions, manage dependencies, and iterate.
 
-> **Note:** Anvil is in early development. Expect breaking changes, incomplete features, and rough edges. Not yet published to the PowerShell Gallery.
+> **Note:** Anvil is still in early development. Expect breaking changes, incomplete features, and rough edges.
 
 ## Features
 
