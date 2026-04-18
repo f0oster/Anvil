@@ -58,7 +58,7 @@ Describe 'Get-AnvilTemplate' -Tag 'Unit' {
         $Module = $Results | Where-Object { $_.Name -eq 'Module' }
         $ManifestFile = Join-Path $Module.Path 'template.psd1'
         $ManifestFile | Should -Exist
-        $AllFiles = (Get-ChildItem -Path $Module.Path -File -Recurse).Count
+        $AllFiles = (Get-ChildItem -Path $Module.Path -File -Recurse -Force).Count
         $Module.FileCount | Should -BeLessThan $AllFiles
     }
 
