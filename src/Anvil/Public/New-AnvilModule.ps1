@@ -251,10 +251,10 @@ function New-AnvilModule {
     $ResolvedGitInit = if ($PSBoundParameters.ContainsKey('GitInit')) {
         [bool]$GitInit
     } elseif ($Interactive) {
-        $GitInput = Read-PromptValue -Prompt '  Initialize git repository? (y/n)' -Default 'n'
+        $GitInput = Read-PromptValue -Prompt '  Initialize git repository? (y/n)' -Default 'y'
         $GitInput -match '^[Yy]'
     } else {
-        $false
+        $true
     }
 
     Assert-ManifestConfiguration -Manifest $Manifest -Configuration $Resolved

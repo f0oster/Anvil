@@ -71,7 +71,7 @@
             Name    = 'IncludeDocs'
             Type    = 'bool'
             Prompt  = 'Include platyPS docs generation?'
-            Default = $false
+            Default = $true
             Format  = 'lower-string'
         }
         @{
