@@ -328,6 +328,7 @@ Describe 'New-AnvilModule manifest conditions' -Tag 'Integration' {
                 Name            = 'NoDocs'
                 DestinationPath = $script:CondRoot
                 Author          = 'Test'
+                IncludeDocs     = $false
                 PassThru        = $true
                 Confirm         = $false
             }
