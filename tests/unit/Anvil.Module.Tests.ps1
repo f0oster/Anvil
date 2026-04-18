@@ -57,20 +57,9 @@ Describe 'Module: Anvil' -Tag 'Unit' {
         It 'exports <_>' -ForEach $DeclaredFunctions {
             (Get-Module -Name 'Anvil').ExportedFunctions.Keys | Should -Contain $_
         }
-        It 'does not export private functions' {
+        It 'only exports functions from the Public directory' {
             $Exported = (Get-Module -Name 'Anvil').ExportedFunctions.Keys
-            $Exported | Should -Not -Contain 'Invoke-TemplateEngine'
-            $Exported | Should -Not -Contain 'Resolve-PathTokens'
-            $Exported | Should -Not -Contain 'Resolve-ContentTokens'
-            $Exported | Should -Not -Contain 'Assert-ValidConfiguration'
-            $Exported | Should -Not -Contain 'Copy-CITemplates'
-            $Exported | Should -Not -Contain 'Test-Excluded'
-            $Exported | Should -Not -Contain 'Get-TestContent'
-            $Exported | Should -Not -Contain 'Get-FunctionContent'
-            $Exported | Should -Not -Contain 'Get-ClassContent'
-            $Exported | Should -Not -Contain 'Invoke-InteractivePrompt'
-            $Exported | Should -Not -Contain 'Read-PromptValue'
-            $Exported | Should -Not -Contain 'Read-PromptChoice'
+            $Exported | Should -HaveCount $ExpectedFunctionCount
         }
     }
 

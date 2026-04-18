@@ -5,7 +5,7 @@ BeforeAll {
     while ($ProjectRoot -and -not (Test-Path (Join-Path $ProjectRoot 'build/build.settings.psd1'))) {
         $ProjectRoot = Split-Path $ProjectRoot -Parent
     }
-    $ModuleName   = '<%ModuleName%>'
+    $ModuleName   = '<%Name%>'
     $ArtifactsDir = Join-Path -Path $ProjectRoot -ChildPath 'artifacts'
     $PackageDir   = Join-Path -Path $ArtifactsDir -ChildPath 'package'
     $StagedModule = Join-Path -Path $PackageDir -ChildPath $ModuleName
@@ -54,5 +54,5 @@ Describe 'Build Artifacts' -Tag 'Integration' {
 }
 
 AfterAll {
-    Get-Module -Name '<%ModuleName%>' -ErrorAction SilentlyContinue | Remove-Module -Force
+    Get-Module -Name '<%Name%>' -ErrorAction SilentlyContinue | Remove-Module -Force
 }

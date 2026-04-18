@@ -98,6 +98,175 @@ Describe 'Invoke-TemplateEngine' -Tag 'Unit' {
         }
     }
 
+    Context 'Manifest conditions' {
+
+        BeforeEach {
+            $script:CondSrc = Join-Path $TestDrive "condsrc_$([guid]::NewGuid().ToString('N').Substring(0,8))"
+            $script:CondDst = Join-Path $TestDrive "conddst_$([guid]::NewGuid().ToString('N').Substring(0,8))"
+            New-Item -Path $script:CondSrc -ItemType Directory -Force | Out-Null
+            Set-Content -Path (Join-Path $script:CondSrc 'keep.txt') -Value 'kept'
+            Set-Content -Path (Join-Path $script:CondSrc 'LICENSE.tmpl') -Value 'MIT License <%Author%>'
+            $DocsDir = Join-Path $script:CondSrc 'docs'
+            New-Item -Path $DocsDir -ItemType Directory -Force | Out-Null
+            Set-Content -Path (Join-Path $DocsDir 'README.md.tmpl') -Value '# Docs for <%ModuleName%>'
+        }
+
+        It 'excludes files matching ExcludeWhen condition' {
+            InModuleScope 'Anvil' -Parameters @{ Src = $script:CondSrc; Dst = $script:CondDst } {
+                param($Src, $Dst)
+                $Params = @{
+                    SourcePath      = $Src
+                    DestinationPath = $Dst
+                    Tokens          = @{ License = 'None'; Author = 'Test'; ModuleName = 'M' }
+                    ExcludeWhen     = @{ 'LICENSE.tmpl' = @{ License = 'None' } }
+                }
+                Invoke-TemplateEngine @Params
+            }
+            Join-Path $script:CondDst 'LICENSE' | Should -Not -Exist
+            Join-Path $script:CondDst 'keep.txt' | Should -Exist
+        }
+
+        It 'includes files when ExcludeWhen condition does not match' {
+            InModuleScope 'Anvil' -Parameters @{ Src = $script:CondSrc; Dst = $script:CondDst } {
+                param($Src, $Dst)
+                $Params = @{
+                    SourcePath      = $Src
+                    DestinationPath = $Dst
+                    Tokens          = @{ License = 'MIT'; Author = 'Test'; ModuleName = 'M' }
+                    ExcludeWhen     = @{ 'LICENSE.tmpl' = @{ License = 'None' } }
+                }
+                Invoke-TemplateEngine @Params
+            }
+            Join-Path $script:CondDst 'LICENSE' | Should -Exist
+        }
+
+        It 'excludes files when IncludeWhen condition does not match' {
+            InModuleScope 'Anvil' -Parameters @{ Src = $script:CondSrc; Dst = $script:CondDst } {
+                param($Src, $Dst)
+                $Params = @{
+                    SourcePath      = $Src
+                    DestinationPath = $Dst
+                    Tokens          = @{ License = 'MIT'; Author = 'Test'; ModuleName = 'M'; IncludeDocs = 'false' }
+                    IncludeWhen     = @{ 'docs/*' = @{ IncludeDocs = 'true' } }
+                }
+                Invoke-TemplateEngine @Params
+            }
+            Join-Path $script:CondDst 'docs/README.md' | Should -Not -Exist
+        }
+
+        It 'includes files when IncludeWhen condition matches' {
+            InModuleScope 'Anvil' -Parameters @{ Src = $script:CondSrc; Dst = $script:CondDst } {
+                param($Src, $Dst)
+                $Params = @{
+                    SourcePath      = $Src
+                    DestinationPath = $Dst
+                    Tokens          = @{ License = 'MIT'; Author = 'Test'; ModuleName = 'M'; IncludeDocs = 'true' }
+                    IncludeWhen     = @{ 'docs/*' = @{ IncludeDocs = 'true' } }
+                }
+                Invoke-TemplateEngine @Params
+            }
+            Join-Path $script:CondDst 'docs/README.md' | Should -Exist
+        }
+
+        It 'processes all files when no conditions are specified' {
+            InModuleScope 'Anvil' -Parameters @{ Src = $script:CondSrc; Dst = $script:CondDst } {
+                param($Src, $Dst)
+                $Params = @{
+                    SourcePath      = $Src
+                    DestinationPath = $Dst
+                    Tokens          = @{ License = 'MIT'; Author = 'Test'; ModuleName = 'M' }
+                }
+                Invoke-TemplateEngine @Params
+            }
+            Join-Path $script:CondDst 'keep.txt' | Should -Exist
+            Join-Path $script:CondDst 'LICENSE' | Should -Exist
+            Join-Path $script:CondDst 'docs/README.md' | Should -Exist
+        }
+    }
+
+    Context 'Section processing' {
+
+        It 'strips sections when condition does not match' {
+            $SrcDir = Join-Path $TestDrive "secsrc_$([guid]::NewGuid().ToString('N').Substring(0,8))"
+            $DstDir = Join-Path $TestDrive "secdst_$([guid]::NewGuid().ToString('N').Substring(0,8))"
+            New-Item -Path $SrcDir -ItemType Directory -Force | Out-Null
+            $Content = @"
+before
+<%#section DocsTask%>
+task Docs { }
+<%#endsection%>
+after
+"@
+            Set-Content -Path (Join-Path $SrcDir 'build.ps1.tmpl') -Value $Content
+            InModuleScope 'Anvil' -Parameters @{ Src = $SrcDir; Dst = $DstDir } {
+                param($Src, $Dst)
+                $Params = @{
+                    SourcePath      = $Src
+                    DestinationPath = $Dst
+                    Tokens          = @{ IncludeDocs = 'false' }
+                    Sections        = @{ DocsTask = @{ IncludeWhen = @{ IncludeDocs = 'true' } } }
+                }
+                Invoke-TemplateEngine @Params
+            }
+            $Result = Get-Content (Join-Path $DstDir 'build.ps1') -Raw
+            $Result | Should -Match 'before'
+            $Result | Should -Match 'after'
+            $Result | Should -Not -Match 'task Docs'
+        }
+
+        It 'keeps sections when condition matches' {
+            $SrcDir = Join-Path $TestDrive "secsrc2_$([guid]::NewGuid().ToString('N').Substring(0,8))"
+            $DstDir = Join-Path $TestDrive "secdst2_$([guid]::NewGuid().ToString('N').Substring(0,8))"
+            New-Item -Path $SrcDir -ItemType Directory -Force | Out-Null
+            $Content = @"
+before
+<%#section DocsTask%>
+task Docs { }
+<%#endsection%>
+after
+"@
+            Set-Content -Path (Join-Path $SrcDir 'build.ps1.tmpl') -Value $Content
+            InModuleScope 'Anvil' -Parameters @{ Src = $SrcDir; Dst = $DstDir } {
+                param($Src, $Dst)
+                $Params = @{
+                    SourcePath      = $Src
+                    DestinationPath = $Dst
+                    Tokens          = @{ IncludeDocs = 'true' }
+                    Sections        = @{ DocsTask = @{ IncludeWhen = @{ IncludeDocs = 'true' } } }
+                }
+                Invoke-TemplateEngine @Params
+            }
+            $Result = Get-Content (Join-Path $DstDir 'build.ps1') -Raw
+            $Result | Should -Match 'task Docs'
+            $Result | Should -Not -Match '<%#section'
+        }
+
+        It 'applies token replacement after section processing' {
+            $SrcDir = Join-Path $TestDrive "secsrc3_$([guid]::NewGuid().ToString('N').Substring(0,8))"
+            $DstDir = Join-Path $TestDrive "secdst3_$([guid]::NewGuid().ToString('N').Substring(0,8))"
+            New-Item -Path $SrcDir -ItemType Directory -Force | Out-Null
+            $TokenPattern = '<%' + 'ModuleName' + '%>'
+            $Content = @"
+<%#section Header%>
+# $TokenPattern
+<%#endsection%>
+"@
+            Set-Content -Path (Join-Path $SrcDir 'readme.md.tmpl') -Value $Content
+            InModuleScope 'Anvil' -Parameters @{ Src = $SrcDir; Dst = $DstDir } {
+                param($Src, $Dst)
+                $Params = @{
+                    SourcePath      = $Src
+                    DestinationPath = $Dst
+                    Tokens          = @{ ModuleName = 'MyMod'; Show = 'yes' }
+                    Sections        = @{ Header = @{ IncludeWhen = @{ Show = 'yes' } } }
+                }
+                Invoke-TemplateEngine @Params
+            }
+            $Result = Get-Content (Join-Path $DstDir 'readme.md') -Raw
+            $Result | Should -Match '# MyMod'
+        }
+    }
+
     It 'is not exported' {
         $Exported = (Get-Module 'Anvil').ExportedFunctions.Keys
         $Exported | Should -Not -Contain 'Invoke-TemplateEngine'

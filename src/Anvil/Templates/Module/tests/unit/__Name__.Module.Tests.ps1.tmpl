@@ -5,7 +5,7 @@ BeforeDiscovery {
     while ($ProjectRoot -and -not (Test-Path (Join-Path $ProjectRoot 'build/build.settings.psd1'))) {
         $ProjectRoot = Split-Path $ProjectRoot -Parent
     }
-    $ModuleName   = '<%ModuleName%>'
+    $ModuleName   = '<%Name%>'
     $ModuleDir    = Join-Path -Path $ProjectRoot -ChildPath 'src' | Join-Path -ChildPath $ModuleName
     $PublicDir    = Join-Path -Path $ModuleDir -ChildPath 'Public'
 
@@ -17,7 +17,7 @@ BeforeAll {
     while ($ProjectRoot -and -not (Test-Path (Join-Path $ProjectRoot 'build/build.settings.psd1'))) {
         $ProjectRoot = Split-Path $ProjectRoot -Parent
     }
-    $ModuleName   = '<%ModuleName%>'
+    $ModuleName   = '<%Name%>'
     $ModuleDir    = Join-Path -Path $ProjectRoot -ChildPath 'src' | Join-Path -ChildPath $ModuleName
     $ManifestPath = Join-Path -Path $ModuleDir -ChildPath "$ModuleName.psd1"
     $PublicDir    = Join-Path -Path $ModuleDir -ChildPath 'Public'
@@ -29,10 +29,10 @@ BeforeAll {
 }
 
 AfterAll {
-    Get-Module -Name '<%ModuleName%>' -ErrorAction SilentlyContinue | Remove-Module -Force
+    Get-Module -Name '<%Name%>' -ErrorAction SilentlyContinue | Remove-Module -Force
 }
 
-Describe 'Module: <%ModuleName%>' -Tag 'Unit' {
+Describe 'Module: <%Name%>' -Tag 'Unit' {
 
     Context 'Manifest' {
         It 'has a valid manifest' {
@@ -56,18 +56,18 @@ Describe 'Module: <%ModuleName%>' -Tag 'Unit' {
         }
 
         It 'is loaded after import' {
-            Get-Module -Name '<%ModuleName%>' | Should -Not -BeNullOrEmpty
+            Get-Module -Name '<%Name%>' | Should -Not -BeNullOrEmpty
         }
     }
 
     Context 'Exports' {
         It 'exports the expected number of functions' {
-            $Exported = (Get-Module -Name '<%ModuleName%>').ExportedFunctions.Keys
+            $Exported = (Get-Module -Name '<%Name%>').ExportedFunctions.Keys
             $Exported.Count | Should -Be $ExpectedFunctionCount
         }
 
         It 'exports <_>' -ForEach $DeclaredFunctions {
-            $Exported = (Get-Module -Name '<%ModuleName%>').ExportedFunctions.Keys
+            $Exported = (Get-Module -Name '<%Name%>').ExportedFunctions.Keys
             $_ | Should -BeIn $Exported
         }
     }

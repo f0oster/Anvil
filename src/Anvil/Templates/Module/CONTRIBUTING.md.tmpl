@@ -1,34 +1,49 @@
-# Contributing to <%ModuleName%>
+# Contributing to <%Name%>
 
 ## Prerequisites
 
-- **PowerShell 7.4+** (recommended) or **Windows PowerShell 5.1**
-- No other tooling required — the bootstrap script handles everything.
+- **PowerShell 7.2+**
+- [Anvil](https://github.com/f0oster/Anvil) (`Install-Module -Name Anvil -Scope CurrentUser`)
 
 ## Setup
 
 ```powershell
 git clone <your-repo-url>
-cd <%ModuleName%>
-./build/bootstrap.ps1
+cd <%Name%>
+Invoke-AnvilBootstrapDeps
 ```
 
-## Development loop
+## Development
 
 ```powershell
-Invoke-Build -File ./build/module.build.ps1 -Task Lint, Test
+Invoke-AnvilBuild -Task Lint, Test
+```
+
+Run the full pipeline before submitting:
+
+```powershell
+Invoke-AnvilBuild
+```
+
+To test your changes interactively:
+
+```powershell
+Import-AnvilModule
 ```
 
 ## Conventions
 
-- One function per file, filename matches function name.
-- Public functions in `src/<%ModuleName%>/Public/`, private in `Private/`.
-- Always use `Join-Path` — never backslash concatenation.
-- Pester 5 syntax only (`New-PesterConfiguration`, `BeforeAll`, `BeforeDiscovery`).
-- Tag tests with `'Unit'` or `'Integration'`.
+- One function per file, filename matches function name
+- Public functions in `src/<%Name%>/Public/`, private in `Private/`
+
+## Testing
+
+Unit tests cover individual functions. Integration tests validate the compiled build output. Both must pass before merging.
+
+When adding a new private function, include an "is not exported" test in the test file.
 
 ## Pull requests
 
 1. Branch from `main`
-2. Run `Invoke-Build -File ./build/module.build.ps1` — ensure it passes
+2. Run `Invoke-AnvilBuild` and ensure it passes
 3. Open a PR against `main`

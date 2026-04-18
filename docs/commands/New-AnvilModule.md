@@ -17,8 +17,8 @@ and CI/CD pipelines.
 New-AnvilModule [[-Name] <String>] [[-DestinationPath] <String>] [-Author <String>] [-Description <String>]
  [-CompanyName <String>] [-MinPowerShellVersion <String>] [-CompatiblePSEditions <String[]>]
  [-CIProvider <String>] [-License <String>] [-IncludeDocs] [-CoverageThreshold <Int32>] [-Tags <String[]>]
- [-ProjectUri <String>] [-LicenseUri <String>] [-Force] [-GitInit] [-Interactive] [-PassThru]
- [-ProgressAction <ActionPreference>] [-WhatIf] [-Confirm] [<CommonParameters>]
+ [-ProjectUri <String>] [-LicenseUri <String>] [-Template <String>] [-Force] [-GitInit] [-Interactive]
+ [-PassThru] [-ProgressAction <ActionPreference>] [-WhatIf] [-Confirm] [<CommonParameters>]
 ```
 
 ## DESCRIPTION
@@ -304,6 +304,24 @@ Aliases:
 Required: False
 Position: Named
 Default value: None
+Accept pipeline input: False
+Accept wildcard characters: False
+```
+
+### -Template
+Template to scaffold from.  Accepts a template name (looked up
+under the bundled Templates directory) or an absolute path to a
+directory containing a template.psd1 manifest.
+Default: Module.
+
+```yaml
+Type: String
+Parameter Sets: (All)
+Aliases:
+
+Required: False
+Position: Named
+Default value: Module
 Accept pipeline input: False
 Accept wildcard characters: False
 ```

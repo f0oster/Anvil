@@ -5,7 +5,7 @@ BeforeAll {
     while ($ProjectRoot -and -not (Test-Path (Join-Path $ProjectRoot 'build/build.settings.psd1'))) {
         $ProjectRoot = Split-Path $ProjectRoot -Parent
     }
-    $ModuleName   = '<%ModuleName%>'
+    $ModuleName   = '<%Name%>'
     $ModuleDir    = Join-Path -Path $ProjectRoot -ChildPath 'src' | Join-Path -ChildPath $ModuleName
     $ManifestPath = Join-Path -Path $ModuleDir -ChildPath "$ModuleName.psd1"
 
@@ -14,19 +14,19 @@ BeforeAll {
 }
 
 AfterAll {
-    Get-Module -Name '<%ModuleName%>' -ErrorAction SilentlyContinue | Remove-Module -Force
+    Get-Module -Name '<%Name%>' -ErrorAction SilentlyContinue | Remove-Module -Force
 }
 
 Describe 'Format-GreetingText' -Tag 'Unit' {
 
     It 'formats a greeting for the given name' {
-        InModuleScope '<%ModuleName%>' {
+        InModuleScope '<%Name%>' {
             Format-GreetingText -Name 'Alice' | Should -Be 'Hello, Alice!'
         }
     }
 
     It 'is not exported' {
-        $Exported = (Get-Module '<%ModuleName%>').ExportedFunctions.Keys
+        $Exported = (Get-Module '<%Name%>').ExportedFunctions.Keys
         $Exported | Should -Not -Contain 'Format-GreetingText'
     }
 }

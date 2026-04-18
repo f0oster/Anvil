@@ -31,6 +31,21 @@ function Invoke-TemplateEngine {
         Optional array of relative path patterns to skip.  Supports simple
         wildcards via the -like operator (*, ?, []).
 
+    .PARAMETER IncludeWhen
+        Optional hashtable of manifest conditions for conditional file
+        inclusion.  Keys are wildcard path patterns; values are condition
+        hashtables evaluated by Test-ManifestCondition.
+
+    .PARAMETER ExcludeWhen
+        Optional hashtable of manifest conditions for conditional file
+        exclusion.  Keys are wildcard path patterns; values are condition
+        hashtables evaluated by Test-ManifestCondition.
+
+    .PARAMETER Sections
+        Optional hashtable of section conditions from a template manifest.
+        Keys are section names matching <%#section Name%> markers in
+        template files.  Each value has an IncludeWhen or ExcludeWhen key.
+
     .OUTPUTS
         System.Int32
             The number of files processed (excluding skipped files).
@@ -53,7 +68,13 @@ function Invoke-TemplateEngine {
         [Parameter(Mandatory)]
         [hashtable]$Tokens,
 
-        [string[]]$ExcludePatterns = @()
+        [string[]]$ExcludePatterns = @(),
+
+        [hashtable]$IncludeWhen = @{},
+
+        [hashtable]$ExcludeWhen = @{},
+
+        [hashtable]$Sections = @{}
     )
 
     if (-not (Test-Path -Path $SourcePath)) {
@@ -74,6 +95,10 @@ function Invoke-TemplateEngine {
             continue
         }
 
+        if (-not (Test-FileCondition -RelativePath $ResolvedPath -IncludeWhen $IncludeWhen -ExcludeWhen $ExcludeWhen -Tokens $Tokens)) {
+            continue
+        }
+
         $TargetDir = Join-Path -Path $DestinationPath -ChildPath $ResolvedPath
         if (-not (Test-Path -Path $TargetDir)) {
             New-Item -Path $TargetDir -ItemType Directory -Force | Out-Null
@@ -88,6 +113,10 @@ function Invoke-TemplateEngine {
         $ResolvedPath = Resolve-PathTokens -RelativePath $RelativePath -Tokens $Tokens
 
         if (Test-Excluded -RelativePath $ResolvedPath -Patterns $ExcludePatterns) {
+            continue
+        }
+
+        if (-not (Test-FileCondition -RelativePath $ResolvedPath -IncludeWhen $IncludeWhen -ExcludeWhen $ExcludeWhen -Tokens $Tokens)) {
             continue
         }
 
@@ -106,6 +135,9 @@ function Invoke-TemplateEngine {
 
         if ($IsTemplate) {
             $Content = Get-Content -Path $File.FullName -Raw -ErrorAction Stop
+            if ($Sections.Count -gt 0) {
+                $Content = Resolve-TemplateSections -Content $Content -Sections $Sections -Tokens $Tokens
+            }
             $Content = Resolve-ContentTokens -Content $Content -Tokens $Tokens
             Set-Content -Path $TargetPath -Value $Content -NoNewline -ErrorAction Stop
         } else {

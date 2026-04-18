@@ -77,6 +77,12 @@ function New-AnvilModule {
         License URI for the module manifest.
         Default: empty string.
 
+    .PARAMETER Template
+        Template to scaffold from.  Accepts a template name (looked up
+        under the bundled Templates directory) or an absolute path to a
+        directory containing a template.psd1 manifest.
+        Default: Module.
+
     .PARAMETER Force
         Removes and re-creates the destination directory if it already exists.
 
@@ -194,6 +200,9 @@ function New-AnvilModule {
         [string]$LicenseUri,
 
         [Parameter()]
+        [string]$Template = 'Module',
+
+        [Parameter()]
         [switch]$Force,
 
         [Parameter()]
@@ -206,44 +215,54 @@ function New-AnvilModule {
         [switch]$PassThru
     )
 
-    $Defaults = @{
-        Description          = 'A PowerShell module scaffolded by Anvil.'
-        CompanyName          = ''
-        MinPowerShellVersion = '5.1'
-        CompatiblePSEditions = @('Desktop', 'Core')
-        CIProvider           = 'GitHub'
-        License              = 'MIT'
-        CoverageThreshold    = 80
-        IncludeDocs          = $false
-        Tags                 = @()
-        ProjectUri           = ''
-        LicenseUri           = ''
-        GitInit              = $false
+    # Resolve template path
+    if (Test-Path -Path $Template -PathType Container) {
+        $BaseTemplatePath = $Template
+    } else {
+        $BaseTemplatePath = Join-Path -Path $script:TemplateRoot -ChildPath $Template
     }
 
-    $PromptParams = @{
-        BoundParams = $PSBoundParameters
-        Defaults    = $Defaults
-        Interactive = [bool]$Interactive
-    }
-    $Resolved = Invoke-InteractivePrompt @PromptParams
+    $Manifest = Read-TemplateManifest -TemplatePath $BaseTemplatePath
 
-    $Config = @{
-        ModuleName           = $Resolved.Name
-        Author               = $Resolved.Author
-        Description          = $Resolved.Description
-        CIProvider           = $Resolved.CIProvider
-        License              = $Resolved.License
-        CoverageThreshold    = $Resolved.CoverageThreshold
-        MinPowerShellVersion = $Resolved.MinPowerShellVersion
+    # Map cmdlet parameters to manifest parameter names
+    $OperationalParams = @('DestinationPath', 'Force', 'GitInit', 'Interactive', 'PassThru', 'Template')
+    $ManifestBound = @{}
+    foreach ($Key in $PSBoundParameters.Keys) {
+        if ($Key -notin $OperationalParams) {
+            $ManifestBound[$Key] = $PSBoundParameters[$Key]
+        }
     }
 
-    Assert-ValidConfiguration -Configuration $Config
+    # Resolve template parameters via manifest
+    $Resolved = Invoke-ManifestPrompt -Manifest $Manifest -BoundParams $ManifestBound -Interactive ([bool]$Interactive)
 
-    $ProjectRoot = Join-Path -Path $Resolved.DestinationPath -ChildPath $Resolved.Name
+    # Resolve operational parameters
+    $ResolvedDestination = if ($PSBoundParameters.ContainsKey('DestinationPath')) {
+        $DestinationPath
+    } elseif ($Interactive) {
+        Read-PromptValue -Prompt '  Destination path' -Default $PWD.Path
+    } else {
+        if (-not $DestinationPath) {
+            throw "'DestinationPath' is required. Use -Interactive for the guided wizard."
+        }
+        $DestinationPath
+    }
+
+    $ResolvedGitInit = if ($PSBoundParameters.ContainsKey('GitInit')) {
+        [bool]$GitInit
+    } elseif ($Interactive) {
+        $GitInput = Read-PromptValue -Prompt '  Initialize git repository? (y/n)' -Default 'y'
+        $GitInput -match '^[Yy]'
+    } else {
+        $true
+    }
+
+    Assert-ManifestConfiguration -Manifest $Manifest -Configuration $Resolved
+
+    $ProjectRoot = Join-Path -Path $ResolvedDestination -ChildPath $Resolved.Name
 
     if (Test-Path -Path $ProjectRoot) {
-        if ($Resolved.Force) {
+        if ($Force) {
             if ($PSCmdlet.ShouldProcess($ProjectRoot, 'Remove existing project directory')) {
                 Remove-Item -Path $ProjectRoot -Recurse -Force
             } else {
@@ -254,71 +273,62 @@ function New-AnvilModule {
         }
     }
 
-    $ModuleGuid = [guid]::NewGuid().ToString()
-    $Year = (Get-Date).Year.ToString()
-    $DocsEnabled = if ($Resolved.IncludeDocs) { 'true' } else { 'false' }
-
-    # Format array values for .psd1 embedding
-    $EditionsString = "@('" + ($Resolved.CompatiblePSEditions -join "', '") + "')"
-    $TagsString = if ($Resolved.Tags.Count -gt 0) {
-        "@('" + ($Resolved.Tags -join "', '") + "')"
-    } else {
-        "@()"
+    # Build token table from manifest parameters
+    $Tokens = @{}
+    foreach ($Param in $Manifest.Parameters) {
+        $ParamName = $Param.Name
+        $Value = $Resolved[$ParamName]
+        $Formatter = if ($Param.ContainsKey('Format')) { $Param.Format } else { 'raw' }
+        $Tokens[$ParamName] = Format-TokenValue -Value $Value -Formatter $Formatter
     }
 
-    $Tokens = @{
-        ModuleName           = $Resolved.Name
-        Author               = $Resolved.Author
-        Description          = $Resolved.Description
-        CompanyName          = $Resolved.CompanyName
-        ModuleGuid           = $ModuleGuid
-        Year                 = $Year
-        CoverageThreshold    = $Resolved.CoverageThreshold.ToString()
-        MinPowerShellVersion = $Resolved.MinPowerShellVersion
-        CompatiblePSEditions = $EditionsString
-        License              = $Resolved.License
-        CIProvider           = $Resolved.CIProvider
-        IncludeDocs          = $DocsEnabled
-        Tags                 = $TagsString
-        ProjectUri           = $Resolved.ProjectUri
-        LicenseUri           = $Resolved.LicenseUri
+    # Resolve auto-tokens
+    foreach ($Auto in $Manifest.AutoTokens) {
+        $Tokens[$Auto.Name] = Resolve-AutoToken -Source $Auto.Source
     }
+
+    # Extract conditions from manifest
+    $IncludeWhen = if ($Manifest.ContainsKey('IncludeWhen')) { $Manifest.IncludeWhen } else { @{} }
+    $ExcludeWhen = if ($Manifest.ContainsKey('ExcludeWhen')) { $Manifest.ExcludeWhen } else { @{} }
+    $Sections = if ($Manifest.ContainsKey('Sections')) { $Manifest.Sections } else { @{} }
 
     if ($PSCmdlet.ShouldProcess($ProjectRoot, "Scaffold module project '$($Resolved.Name)'")) {
 
         Write-Host "[Anvil] Creating project: $($Resolved.Name)" -ForegroundColor Cyan
         Write-Host "[Anvil] Destination: $ProjectRoot" -ForegroundColor White
 
-        # 1. Expand base module template
-        $BaseTemplatePath = Join-Path -Path $script:TemplateRoot -ChildPath 'Module'
-        $FileCount = Invoke-TemplateEngine -SourcePath $BaseTemplatePath -DestinationPath $ProjectRoot -Tokens $Tokens
+        # 1. Expand base module template with conditions
+        $EngineParams = @{
+            SourcePath      = $BaseTemplatePath
+            DestinationPath = $ProjectRoot
+            Tokens          = $Tokens
+            ExcludePatterns = @('template.psd1')
+            IncludeWhen     = $IncludeWhen
+            ExcludeWhen     = $ExcludeWhen
+            Sections        = $Sections
+        }
+        $FileCount = Invoke-TemplateEngine @EngineParams
 
         Write-Host "[Anvil] Base template: $FileCount files" -ForegroundColor DarkGray
 
-        # 2. Layer CI-specific templates
-        if ($Resolved.CIProvider -ne 'None') {
-            $CiCount = Copy-CITemplates -Provider $Resolved.CIProvider -DestinationPath $ProjectRoot -Tokens $Tokens
-            Write-Host "[Anvil] CI ($($Resolved.CIProvider)): $CiCount files" -ForegroundColor DarkGray
-        }
-
-        # 3. Remove license file if 'None'
-        if ($Resolved.License -eq 'None') {
-            $LicPath = Join-Path -Path $ProjectRoot -ChildPath 'LICENSE'
-            if (Test-Path -Path $LicPath) {
-                Remove-Item -Path $LicPath -Force
+        # 2. Process layers from manifest
+        if ($Manifest.ContainsKey('Layers')) {
+            foreach ($Layer in $Manifest.Layers) {
+                $LayerValue = $Resolved[$Layer.PathKey]
+                if ($Layer.ContainsKey('Skip') -and $LayerValue -eq $Layer.Skip) {
+                    continue
+                }
+                $LayerRoot = Split-Path -Path $BaseTemplatePath -Parent
+                $LayerPath = Join-Path -Path $LayerRoot -ChildPath $Layer.BasePath |
+                    Join-Path -ChildPath $LayerValue
+                if (Test-Path -Path $LayerPath) {
+                    $LayerCount = Invoke-TemplateEngine -SourcePath $LayerPath -DestinationPath $ProjectRoot -Tokens $Tokens
+                    Write-Host "[Anvil] Layer ($LayerValue): $LayerCount files" -ForegroundColor DarkGray
+                }
             }
         }
 
-        # 4. Remove docs template files if docs not requested
-        if (-not $Resolved.IncludeDocs) {
-            $DocsDir = Join-Path -Path $ProjectRoot -ChildPath 'docs'
-            if (Test-Path -Path $DocsDir) {
-                Get-ChildItem -Path $DocsDir -File -Recurse -ErrorAction SilentlyContinue |
-                    Remove-Item -Force -ErrorAction SilentlyContinue
-            }
-        }
-
-        # 5. Write Anvil version stamp
+        # 3. Write Anvil version stamp
         $AnvilVersion = (Get-Module -Name 'Anvil').Version.ToString()
         Set-Content -Path (Join-Path $ProjectRoot '.ANVIL_VERSION') -Value $AnvilVersion -NoNewline
 
@@ -326,20 +336,18 @@ function New-AnvilModule {
         Write-Host "[Anvil] Project '$($Resolved.Name)' scaffolded successfully!" -ForegroundColor Green
         Write-Host "[Anvil] Next steps:" -ForegroundColor White
         Write-Host "  cd $ProjectRoot" -ForegroundColor White
-        Write-Host "  ./build/bootstrap.ps1" -ForegroundColor White
-        Write-Host "  Invoke-Build -File ./build/module.build.ps1" -ForegroundColor White
+        Write-Host "  Invoke-AnvilBootstrapDeps" -ForegroundColor White
+        Write-Host "  Invoke-AnvilBuild" -ForegroundColor White
         Write-Host ''
 
-        # 6. Optionally initialise a git repository
-        if ($Resolved.GitInit) {
+        # 4. Optionally initialise a git repository
+        if ($ResolvedGitInit) {
             $GitCmd = Get-Command -Name git -ErrorAction SilentlyContinue
             if ($GitCmd) {
                 Push-Location -Path $ProjectRoot
                 try {
                     & git init --quiet
-                    & git add -A
-                    & git commit --quiet -m 'Initial scaffold via Anvil'
-                    Write-Host "[Anvil] Git repository initialised with initial commit." -ForegroundColor DarkGray
+                    Write-Host "[Anvil] Git repository initialised." -ForegroundColor DarkGray
                 } finally {
                     Pop-Location
                 }
@@ -348,7 +356,7 @@ function New-AnvilModule {
             }
         }
 
-        if ($Resolved.PassThru) {
+        if ($PassThru) {
             return $ProjectRoot
         }
     }

@@ -108,7 +108,7 @@ Describe 'New-AnvilModule golden template' -Tag 'Integration' {
                 Join-Path -ChildPath "$($script:ProjectName).psd1"
             $Content = Get-Content -Path $P -Raw
             $Content | Should -Match $script:ProjectName
-            $Content | Should -Not -Match '<%ModuleName%>'
+            $Content | Should -Not -Match '<%Name%>'
         }
         It 'manifest contains the correct author' {
             $P = Join-Path -Path $script:ProjectPath -ChildPath 'src' |
@@ -123,7 +123,7 @@ Describe 'New-AnvilModule golden template' -Tag 'Integration' {
                 Join-Path -ChildPath 'module.build.ps1'
             $Content = Get-Content -Path $P -Raw
             $Content | Should -Match $script:ProjectName
-            $Content | Should -Not -Match '<%ModuleName%>'
+            $Content | Should -Not -Match '<%Name%>'
         }
         It 'build settings contains the correct coverage threshold' {
             $P = Join-Path -Path $script:ProjectPath -ChildPath 'build' |
@@ -209,14 +209,224 @@ Describe 'New-AnvilModule golden template' -Tag 'Integration' {
             $OriginalHash = @{ SomeKey = 'SomeValue' }
             $HashBefore   = $OriginalHash.Clone()
 
-            # Call a second scaffold to a different path — the module should
-            # never touch $OriginalHash
             $Dest2 = Join-Path -Path $script:TempRoot -ChildPath 'MutationTest'
             New-Item -Path $Dest2 -ItemType Directory -Force | Out-Null
             New-AnvilModule -Name 'MutCheck' -DestinationPath $Dest2 -Author 'X' -Confirm:$false
 
             $OriginalHash.Keys | Should -Be $HashBefore.Keys
             $OriginalHash['SomeKey'] | Should -Be 'SomeValue'
+        }
+    }
+}
+
+Describe 'New-AnvilModule manifest conditions' -Tag 'Integration' {
+
+    BeforeAll {
+        $script:CondRoot = Join-Path -Path ([IO.Path]::GetTempPath()) -ChildPath "AnvilCondTest_$([guid]::NewGuid().ToString('N').Substring(0,8))"
+        New-Item -Path $script:CondRoot -ItemType Directory -Force | Out-Null
+    }
+
+    AfterAll {
+        if ($script:CondRoot -and (Test-Path -Path $script:CondRoot)) {
+            Remove-Item -Path $script:CondRoot -Recurse -Force -ErrorAction SilentlyContinue
+        }
+    }
+
+    Context 'License = MIT' {
+
+        BeforeAll {
+            $Params = @{
+                Name            = 'MitLicense'
+                DestinationPath = $script:CondRoot
+                Author          = 'Test'
+                License         = 'MIT'
+                PassThru        = $true
+                Confirm         = $false
+            }
+            $script:MitPath = New-AnvilModule @Params
+            $script:MitLicenseContent = Get-Content -Path (Join-Path $script:MitPath 'LICENSE') -Raw
+        }
+
+        It 'creates a LICENSE file' {
+            Join-Path $script:MitPath 'LICENSE' | Should -Exist
+        }
+
+        It 'contains the MIT license text' {
+            $script:MitLicenseContent | Should -Match 'MIT License'
+            $script:MitLicenseContent | Should -Match 'Permission is hereby granted'
+        }
+
+        It 'does not contain Apache license text' {
+            $script:MitLicenseContent | Should -Not -Match 'Apache License'
+        }
+
+        It 'has no section markers' {
+            $script:MitLicenseContent | Should -Not -Match '<%#section'
+        }
+    }
+
+    Context 'License = Apache2' {
+
+        BeforeAll {
+            $Params = @{
+                Name            = 'ApacheLicense'
+                DestinationPath = $script:CondRoot
+                Author          = 'Test'
+                License         = 'Apache2'
+                PassThru        = $true
+                Confirm         = $false
+            }
+            $script:ApachePath = New-AnvilModule @Params
+            $script:ApacheLicenseContent = Get-Content -Path (Join-Path $script:ApachePath 'LICENSE') -Raw
+        }
+
+        It 'creates a LICENSE file' {
+            Join-Path $script:ApachePath 'LICENSE' | Should -Exist
+        }
+
+        It 'contains the Apache 2.0 license text' {
+            $script:ApacheLicenseContent | Should -Match 'Apache License'
+            $script:ApacheLicenseContent | Should -Match 'Version 2\.0'
+        }
+
+        It 'does not contain MIT license text' {
+            $script:ApacheLicenseContent | Should -Not -Match 'MIT License'
+        }
+
+        It 'has no section markers' {
+            $script:ApacheLicenseContent | Should -Not -Match '<%#section'
+        }
+    }
+
+    Context 'License = None' {
+
+        BeforeAll {
+            $Params = @{
+                Name            = 'NoLicense'
+                DestinationPath = $script:CondRoot
+                Author          = 'Test'
+                License         = 'None'
+                PassThru        = $true
+                Confirm         = $false
+            }
+            $script:NoLicensePath = New-AnvilModule @Params
+        }
+
+        It 'does not create a LICENSE file' {
+            Join-Path $script:NoLicensePath 'LICENSE' | Should -Not -Exist
+        }
+
+        It 'still creates the module manifest' {
+            Join-Path $script:NoLicensePath "src/NoLicense/NoLicense.psd1" | Should -Exist
+        }
+    }
+
+    Context 'IncludeDocs = $false' {
+
+        BeforeAll {
+            $Params = @{
+                Name            = 'NoDocs'
+                DestinationPath = $script:CondRoot
+                Author          = 'Test'
+                IncludeDocs     = $false
+                PassThru        = $true
+                Confirm         = $false
+            }
+            $script:NoDocsPath = New-AnvilModule @Params
+            $script:NoDocsBuild = Get-Content -Path (Join-Path $script:NoDocsPath 'build/module.build.ps1') -Raw
+        }
+
+        It 'does not create files in docs/' {
+            $DocsDir = Join-Path $script:NoDocsPath 'docs'
+            $DocsFiles = Get-ChildItem -Path $DocsDir -File -Recurse -ErrorAction SilentlyContinue
+            $DocsFiles | Should -BeNullOrEmpty
+        }
+
+        It 'still creates the build script' {
+            Join-Path $script:NoDocsPath 'build/module.build.ps1' | Should -Exist
+        }
+
+        It 'build script does not contain the Docs task' {
+            $script:NoDocsBuild | Should -Not -Match 'task Docs \{'
+        }
+
+        It 'build script composite task does not include Docs' {
+            $CompositeLine = $script:NoDocsBuild -split '\r?\n' |
+                Where-Object { $_ -match '^task \. ' } |
+                Select-Object -First 1
+            $CompositeLine | Should -Not -Match 'Docs'
+        }
+
+        It 'build script has no section markers' {
+            $script:NoDocsBuild | Should -Not -Match '<%#section'
+            $script:NoDocsBuild | Should -Not -Match '<%#endsection'
+        }
+    }
+
+    Context 'CIProvider = None' {
+
+        BeforeAll {
+            $Params = @{
+                Name            = 'NoCI'
+                DestinationPath = $script:CondRoot
+                Author          = 'Test'
+                CIProvider      = 'None'
+                PassThru        = $true
+                Confirm         = $false
+            }
+            $script:NoCIPath = New-AnvilModule @Params
+        }
+
+        It 'does not create .github directory' {
+            Join-Path $script:NoCIPath '.github' | Should -Not -Exist
+        }
+
+        It 'does not create any CI workflow files' {
+            $CIFiles = Get-ChildItem -Path $script:NoCIPath -Recurse -File |
+                Where-Object { $_.Name -match '(ci|pipeline|gitlab).*\.(yml|yaml)$' }
+            $CIFiles | Should -BeNullOrEmpty
+        }
+
+        It 'still creates the module source' {
+            Join-Path $script:NoCIPath 'src/NoCI/NoCI.psd1' | Should -Exist
+        }
+    }
+
+    Context 'IncludeDocs = $true' {
+
+        BeforeAll {
+            $Params = @{
+                Name            = 'WithDocs'
+                DestinationPath = $script:CondRoot
+                Author          = 'Test'
+                IncludeDocs     = $true
+                PassThru        = $true
+                Confirm         = $false
+            }
+            $script:WithDocsPath = New-AnvilModule @Params
+            $script:WithDocsBuild = Get-Content -Path (Join-Path $script:WithDocsPath 'build/module.build.ps1') -Raw
+        }
+
+        It 'creates files in docs/' {
+            $DocsDir = Join-Path $script:WithDocsPath 'docs'
+            $DocsFiles = Get-ChildItem -Path $DocsDir -File -Recurse -ErrorAction SilentlyContinue
+            $DocsFiles | Should -Not -BeNullOrEmpty
+        }
+
+        It 'build script contains the Docs task' {
+            $script:WithDocsBuild | Should -Match 'task Docs \{'
+        }
+
+        It 'build script composite task includes Docs' {
+            $CompositeLine = $script:WithDocsBuild -split '\r?\n' |
+                Where-Object { $_ -match '^task \. ' } |
+                Select-Object -First 1
+            $CompositeLine | Should -Match 'Docs'
+        }
+
+        It 'build script has no section markers' {
+            $script:WithDocsBuild | Should -Not -Match '<%#section'
+            $script:WithDocsBuild | Should -Not -Match '<%#endsection'
         }
     }
 }

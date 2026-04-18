@@ -1,50 +1,167 @@
-# <%ModuleName%>
+# <%Name%>
 
 <%Description%>
 
-## Quick start
+## Prerequisites
+
+PowerShell 7.2 or later is required for the build tooling. The module itself can target any version down to 5.1.
+
+You do not need to install build tools manually. The bootstrap script handles everything.
+
+## First build and bootstrap
 
 ```powershell
-git clone <your-repo-url>
-cd <%ModuleName%>
-./build/bootstrap.ps1
-Invoke-Build -File ./build/module.build.ps1
+Invoke-AnvilBootstrapDeps
+Invoke-AnvilBuild
 ```
 
-## Development
+`Invoke-AnvilBootstrapDeps` installs pinned versions of InvokeBuild, Pester, PSScriptAnalyzer, and platyPS via [ModuleFast](https://github.com/JustinGrote/ModuleFast). `Invoke-AnvilBuild` runs the full pipeline: format, lint, test, compile, and package.
 
-Add functions, classes, and dependencies using Anvil commands:
+The initial build is expected to pass.
+
+## Project layout
+
+```
+<%Name%>/
+├── src/<%Name%>/              Module source
+│   ├── <%Name%>.psd1          Manifest
+│   ├── <%Name%>.psm1          Module loader
+│   ├── Imports.ps1            Module-scoped init
+│   ├── Public/                Exported functions
+│   ├── Private/               Internal helpers
+│   └── PrivateClasses/        PowerShell classes
+├── tests/
+│   ├── unit/                  Pester 5 unit tests
+│   └── integration/           Post-build validation
+├── build/
+│   ├── module.build.ps1       Build tasks
+│   ├── bootstrap.ps1          Dependency installer
+│   ├── build.settings.psd1    Build configuration
+│   └── build.requires.psd1    Build tool versions
+├── requirements.psd1          Runtime module dependencies
+└── docs/                      Documentation
+```
+
+The module source is organized into three directories:
+
+**`Public/`** contains exported functions. These are the commands users see after `Import-Module <%Name%>`. Each function lives in its own file, and the filename must match the function name. The build system discovers all `.ps1` files in this directory and populates `FunctionsToExport` in the published manifest automatically.
+
+**`Private/`** contains internal helper functions. These are loaded into the module's scope but not exported. Users cannot call them directly. Use private functions to break up complex logic without expanding the public API.
+
+**`PrivateClasses/`** contains PowerShell classes. These are loaded before any functions, so both Public and Private code can use them. Classes are primarily for internal logic and data structures. See the section below for constraints and usage patterns.
+
+The convention is one function per file, with the filename matching the function name. Class files should contain related types. All three directories support nested subdirectories for organization.
+
+## Development workflow
+
+### Running the development module
+
+During development, the `.psm1` dot-sources each file individually:
+
+1. `Imports.ps1` loads first so that module-scoped variables and assemblies are available
+2. `PrivateClasses/` loads next so that classes are defined before any functions that reference them
+3. `Public/` and `Private/` load last, with access to both classes and module-scoped state
+
+After making changes, reload the module with `Import-AnvilModule` to re-import it from source.
+
+When you run the build, all source files are compiled into a single `.psm1` in the same order for distribution.
+
+### Module-wide state
+
+`Imports.ps1` is the place for module-scoped variables, assembly loading, and any setup that your module depend on. It is the entry point for your module when it is imported.
+
+```powershell
+$script:DefaultTimeout = 30
+$script:DataPath = Join-Path -Path $PSScriptRoot -ChildPath 'Data'
+```
+
+Any `$script:` variable defined here is accessible from all Public and Private functions. Do *not* define functions in this file. Use `Public/` or `Private/` for that.
+
+### Adding functions
 
 ```powershell
 New-AnvilFunction -FunctionName 'Get-Widget' -Scope Public
 New-AnvilFunction -FunctionName 'Format-Row' -Scope Private
-New-AnvilClass -ClassName 'WidgetResult'
-Add-AnvilDependency -Name 'Az.Storage' -Version '>=5.0.0'
-Invoke-AnvilBootstrapDeps
-Import-AnvilModule
 ```
 
-Lint and test:
+Each command creates the source file and a matching Pester test. Implement the function, then replace placeholder assertions in the test.
+
+Use `-Location` to organize functions into subdirectories:
 
 ```powershell
-Invoke-Build -File ./build/module.build.ps1 -Task Lint, Test
+New-AnvilFunction -FunctionName 'Get-DnsRecord' -Scope Public -Location 'Dns'
 ```
 
-## Guides
+### Adding classes
 
-This project was scaffolded with [Anvil](https://github.com/f0oster/Anvil). The following guides are included in the `getting-started/` directory:
+```powershell
+New-AnvilClass -ClassName 'ConnectionResult'
+```
 
-| Guide | What it covers |
-|-------|---------------|
-| [Getting Started](getting-started/getting-started.md) | Scaffold a project, bootstrap, first build |
-| [Development](getting-started/development.md) | Adding functions, classes, dependencies, testing, the daily workflow |
-| [Project Structure](getting-started/project-structure.md) | What every file and directory does |
-| [Build Pipeline](getting-started/build-pipeline.md) | Every build task explained, settings reference |
-| [CI/CD Integration](getting-started/cicd-integration.md) | GitHub Actions, Azure Pipelines, GitLab CI setup |
-| [Customization](getting-started/customization.md) | Custom lint rules, types, formats, build tasks |
-| [FAQ](getting-started/faq.md) | Common questions and troubleshooting |
+Class files in `PrivateClasses/` are loaded before module functions, so your class types are available to all module code. Define tightly coupled classes in the same file, in dependency order.
 
-For the full Anvil command reference, see the [Anvil documentation](https://github.com/f0oster/Anvil/tree/main/docs).
+**Class changes require a new session.**
+PowerShell does not reload class definitions. Re-importing the module does not update class definitions. Restart the session to pick up changes.
+
+**No access to module scope.**
+Class methods cannot use `$script:` variables. Pass any required state via constructors or method parameters.
+
+**Class visibility.**
+PowerShell does not support explicitly exporting classes, and `Export-ModuleMember` has no effect on them. Use classes primarily for internal logic and type modeling. When functionality needs to be exposed to the module user, wrap class usage behind public module functions.
+
+### Writing tests
+
+Tests mirror the source structure. A function at `src/<%Name%>/Public/Get-Widget.ps1` has a test at `tests/unit/Public/Get-Widget.Tests.ps1`.
+
+Public function tests call functions by name. Private functions and classes are tested using `InModuleScope`:
+
+```powershell
+It 'formats the output correctly' {
+    InModuleScope '<%Name%>' {
+        Format-Internal -Name 'test' | Should -Be 'expected'
+    }
+}
+```
+
+Variables from the test scope are not visible inside `InModuleScope`. Use `-ArgumentList` with a matching `param()` block:
+
+```powershell
+It 'validates the configuration' {
+    $Config = @{ Name = 'Test'; Timeout = 30 }
+    InModuleScope '<%Name%>' -ArgumentList $Config {
+        param($Config)
+        Assert-ValidConfig -Configuration $Config | Should -Not -Throw
+    }
+}
+```
+
+### Running the build
+
+```powershell
+Invoke-AnvilBuild                        # full pipeline
+Invoke-AnvilBuild -Task Test             # unit tests only
+Invoke-AnvilBuild -Task Lint             # lint only
+Invoke-AnvilBuild -Task DevCC            # coverage for VS Code
+```
+
+The full pipeline runs: Clean, Validate, Format, Lint, Test, Build, IntegrationTest, Package. During development, run individual tasks as needed. Run the full pipeline before committing.
+
+The DevCC task generates a `coverage.xml` file in Coverage Gutters format. Install the [Coverage Gutters](https://marketplace.visualstudio.com/items?itemName=ryanluker.vscode-coverage-gutters) extension to view coverage in VS Code.
+
+### Managing dependencies
+
+```powershell
+Add-AnvilDependency -Name 'Az.Storage' -Version '>=5.0.0'
+Invoke-AnvilBootstrapDeps
+```
+
+This updates `requirements.psd1` and the module manifest's `RequiredModules`, then installs the dependency. Version specs follow [ModuleFast](https://github.com/JustinGrote/ModuleFast) syntax.
+
+Build tools are managed separately in `build/build.requires.psd1`. Do not include them in `requirements.psd1`.
+
+### Version management
+
+The development module does not carry a version. The build process assigns the version for distributable artifacts.
 
 ## License
 
