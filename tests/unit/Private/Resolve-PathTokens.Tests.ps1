@@ -19,18 +19,18 @@ AfterAll {
 
 Describe 'Resolve-PathTokens' -Tag 'Unit' {
 
-    It 'replaces __ModuleName__ in a path segment' {
+    It 'replaces path tokens in a path segment' {
         InModuleScope 'Anvil' {
-            $Result = Resolve-PathTokens -RelativePath 'src/__ModuleName__/Public' -Tokens @{ ModuleName = 'Foo' }
+            $Result = Resolve-PathTokens -RelativePath 'src/__Name__/Public' -Tokens @{ Name = 'Foo' }
             $Result | Should -Be 'src/Foo/Public'
         }
     }
 
     It 'replaces multiple different tokens' {
         InModuleScope 'Anvil' {
-            $Result = Resolve-PathTokens -RelativePath '__Author__/__ModuleName__' -Tokens @{
-                Author     = 'Jane'
-                ModuleName = 'Bar'
+            $Result = Resolve-PathTokens -RelativePath '__Author__/__Name__' -Tokens @{
+                Author = 'Jane'
+                Name   = 'Bar'
             }
             $Result | Should -Be 'Jane/Bar'
         }
@@ -38,7 +38,7 @@ Describe 'Resolve-PathTokens' -Tag 'Unit' {
 
     It 'leaves paths without tokens unchanged' {
         InModuleScope 'Anvil' {
-            $Result = Resolve-PathTokens -RelativePath 'build/bootstrap.ps1' -Tokens @{ ModuleName = 'X' }
+            $Result = Resolve-PathTokens -RelativePath 'build/bootstrap.ps1' -Tokens @{ Name = 'X' }
             $Result | Should -Be 'build/bootstrap.ps1'
         }
     }

@@ -1,15 +1,18 @@
 function Get-AnvilTemplate {
     <#
     .SYNOPSIS
-        Lists the available Anvil templates and CI providers.
+        Lists the available Anvil templates.
 
     .DESCRIPTION
         Inspects the bundled template directories shipped with Anvil and
-        returns objects describing each template and CI provider.  Use this
-        to discover what New-AnvilModule can generate.
+        returns objects describing each template.  Templates must contain
+        a template.psd1 manifest to be discovered.
 
-        A summary is also written to the information stream.  Pipe to
-        Format-Table or use -InformationAction Continue to see it.
+        Each template object includes metadata from the manifest
+        (Description, Version, Parameters) and a Layers property listing
+        any layer options declared by the template (e.g. CI providers).
+
+        A summary is also written to the information stream.
 
     .INPUTS
         None
@@ -23,12 +26,12 @@ function Get-AnvilTemplate {
     .EXAMPLE
         Get-AnvilTemplate
 
-        Lists all base templates and CI providers with file counts.
+        Lists all available templates with metadata and layers.
 
     .EXAMPLE
-        Get-AnvilTemplate | Where-Object Type -eq 'CIProvider'
+        (Get-AnvilTemplate | Where-Object Name -eq 'Module').Layers
 
-        Returns only the CI provider entries.
+        Shows the available layers (e.g. CI providers) for the Module template.
     #>
     [CmdletBinding()]
     [OutputType([PSCustomObject])]
@@ -36,46 +39,60 @@ function Get-AnvilTemplate {
 
     $TemplateRoot = $script:TemplateRoot
 
-    # Discover base templates
-    $BaseTemplates = Get-ChildItem -Path $TemplateRoot -Directory -ErrorAction SilentlyContinue |
-        Where-Object { $_.Name -ne 'CI' } |
+    $Templates = Get-ChildItem -Path $TemplateRoot -Directory -ErrorAction SilentlyContinue |
+        Where-Object { Test-Path (Join-Path $_.FullName 'template.psd1') } |
         ForEach-Object {
-            $FileCount = (Get-ChildItem -Path $_.FullName -File -Recurse -ErrorAction SilentlyContinue).Count
-            [PSCustomObject]@{
-                Name      = $_.Name
-                Type      = 'BaseTemplate'
-                FileCount = $FileCount
-                Path      = $_.FullName
-            }
-        }
+            $TemplatePath = $_.FullName
+            $Manifest = Import-PowerShellDataFile -Path (Join-Path $TemplatePath 'template.psd1') -ErrorAction SilentlyContinue
+            if (-not $Manifest) { return }
 
-    # Discover CI providers
-    $CiRoot = Join-Path -Path $TemplateRoot -ChildPath 'CI'
-    $CiProviders = @()
-    if (Test-Path -Path $CiRoot) {
-        $CiProviders = Get-ChildItem -Path $CiRoot -Directory -ErrorAction SilentlyContinue |
-            ForEach-Object {
-                $FileCount = (Get-ChildItem -Path $_.FullName -File -Recurse -ErrorAction SilentlyContinue).Count
+            $FileCount = (Get-ChildItem -Path $TemplatePath -File -Recurse -ErrorAction SilentlyContinue |
+                    Where-Object { $_.Name -ne 'template.psd1' }).Count
+
+                $Layers = @()
+                if ($Manifest.ContainsKey('Layers')) {
+                    foreach ($Layer in $Manifest.Layers) {
+                        $LayerRoot = Join-Path -Path $TemplateRoot -ChildPath $Layer.BasePath
+                        if (Test-Path -Path $LayerRoot) {
+                            $LayerDirs = Get-ChildItem -Path $LayerRoot -Directory -ErrorAction SilentlyContinue
+                            foreach ($Dir in $LayerDirs) {
+                                $Skip = if ($Layer.ContainsKey('Skip')) { $Layer.Skip } else { $null }
+                                if ($Dir.Name -eq $Skip) { continue }
+                                $LayerFileCount = (Get-ChildItem -Path $Dir.FullName -File -Recurse -ErrorAction SilentlyContinue).Count
+                                $Layers += [PSCustomObject]@{
+                                    Name      = $Dir.Name
+                                    PathKey   = $Layer.PathKey
+                                    FileCount = $LayerFileCount
+                                    Path      = $Dir.FullName
+                                }
+                            }
+                        }
+                    }
+                }
+
+                $Parameters = @($Manifest.Parameters | ForEach-Object { $_.Name })
+
                 [PSCustomObject]@{
-                    Name      = $_.Name
-                    Type      = 'CIProvider'
-                    FileCount = $FileCount
-                    Path      = $_.FullName
+                    Name        = $Manifest.Name
+                    Type        = 'BaseTemplate'
+                    Description = $Manifest.Description
+                    Version     = $Manifest.Version
+                    Parameters  = $Parameters
+                    FileCount   = $FileCount
+                    Layers      = $Layers
+                    Path        = $TemplatePath
                 }
             }
-    }
-
-    $All = @($BaseTemplates) + @($CiProviders)
 
     Write-Information ''
     Write-Information 'Anvil Templates'
     Write-Information ''
-    foreach ($T in $All) {
-        Write-Information "  $($T.Type.PadRight(14)) $($T.Name.PadRight(20)) ($($T.FileCount) files)"
+    foreach ($T in $Templates) {
+        $LayerNames = if ($T.Layers.Count -gt 0) { " [Layers: $($T.Layers.Name -join ', ')]" } else { '' }
+        Write-Information "  $($T.Name.PadRight(20)) v$($T.Version)  ($($T.FileCount) files)$LayerNames"
+        Write-Information "  $(' ' * 20) $($T.Description)"
     }
     Write-Information ''
-    Write-Information 'Supported licenses: MIT, Apache2, None'
-    Write-Information ''
 
-    return $All
+    return $Templates
 }

@@ -5,7 +5,7 @@ BeforeAll {
     while ($ProjectRoot -and -not (Test-Path (Join-Path $ProjectRoot 'build/build.settings.psd1'))) {
         $ProjectRoot = Split-Path $ProjectRoot -Parent
     }
-    $ModuleName   = '<%ModuleName%>'
+    $ModuleName   = '<%Name%>'
     $ModuleDir    = Join-Path -Path $ProjectRoot -ChildPath 'src' | Join-Path -ChildPath $ModuleName
     $ManifestPath = Join-Path -Path $ModuleDir -ChildPath "$ModuleName.psd1"
 
@@ -14,21 +14,21 @@ BeforeAll {
 }
 
 AfterAll {
-    Get-Module -Name '<%ModuleName%>' -ErrorAction SilentlyContinue | Remove-Module -Force
+    Get-Module -Name '<%Name%>' -ErrorAction SilentlyContinue | Remove-Module -Force
 }
 
 Describe 'GreetingBuilder' -Tag 'Unit' {
 
     Context 'Default constructor' {
         It 'uses Hello as the default prefix' {
-            InModuleScope '<%ModuleName%>' {
+            InModuleScope '<%Name%>' {
                 $Builder = [GreetingBuilder]::new()
                 $Builder.Prefix | Should -Be 'Hello'
             }
         }
 
         It 'uses ! as the default suffix' {
-            InModuleScope '<%ModuleName%>' {
+            InModuleScope '<%Name%>' {
                 $Builder = [GreetingBuilder]::new()
                 $Builder.Suffix | Should -Be '!'
             }
@@ -37,7 +37,7 @@ Describe 'GreetingBuilder' -Tag 'Unit' {
 
     Context 'Parameterized constructor' {
         It 'accepts a custom prefix and suffix' {
-            InModuleScope '<%ModuleName%>' {
+            InModuleScope '<%Name%>' {
                 $Builder = [GreetingBuilder]::new('Hi', '.')
                 $Builder.Prefix | Should -Be 'Hi'
                 $Builder.Suffix | Should -Be '.'
@@ -47,14 +47,14 @@ Describe 'GreetingBuilder' -Tag 'Unit' {
 
     Context 'Build method' {
         It 'returns a greeting with the default settings' {
-            InModuleScope '<%ModuleName%>' {
+            InModuleScope '<%Name%>' {
                 $Builder = [GreetingBuilder]::new()
                 $Builder.Build('World') | Should -Be 'Hello, World!'
             }
         }
 
         It 'returns a greeting with custom prefix and suffix' {
-            InModuleScope '<%ModuleName%>' {
+            InModuleScope '<%Name%>' {
                 $Builder = [GreetingBuilder]::new('Hey', '?')
                 $Builder.Build('Alice') | Should -Be 'Hey, Alice?'
             }
@@ -63,7 +63,7 @@ Describe 'GreetingBuilder' -Tag 'Unit' {
 
     Context 'ToString method' {
         It 'returns a summary of the builder' {
-            InModuleScope '<%ModuleName%>' {
+            InModuleScope '<%Name%>' {
                 $Builder = [GreetingBuilder]::new('Hi', '!')
                 $Builder.ToString() | Should -Be 'Hi...!'
             }

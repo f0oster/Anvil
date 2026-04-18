@@ -1,11 +1,16 @@
 #Requires -Version <%MinPowerShellVersion%>
 <#
 .SYNOPSIS
-    InvokeBuild build script for <%ModuleName%>.
+    InvokeBuild build script for <%Name%>.
 
 .DESCRIPTION
     Task graph:
+<%#section DocsTaskGraph%>
         . (default)  ->  Clean, Validate, Format, Lint, Test, Docs, Build, IntegrationTest, Package
+<%#endsection%>
+<%#section NoDocsTaskGraph%>
+        . (default)  ->  Clean, Validate, Format, Lint, Test, Build, IntegrationTest, Package
+<%#endsection%>
         Release      ->  Version + . + Publish
         DevCC        ->  generate Coverage Gutters output for VS Code
 
@@ -198,13 +203,9 @@ task Test {
     Write-BuildFooter 'Unit tests complete'
 }
 
+<%#section DocsTask%>
 task Docs {
     Write-BuildHeader 'Documentation (platyPS)'
-
-    if (-not $script:IncludeDocs) {
-        Write-Build DarkGray '  Docs disabled in build.settings.psd1 -- skipping'
-        return
-    }
 
     if (-not (Get-Module -ListAvailable -Name 'platyPS' -ErrorAction SilentlyContinue)) {
         Write-Build Yellow '  platyPS not installed -- skipping docs generation'
@@ -239,6 +240,7 @@ task Docs {
 
     Write-BuildFooter 'Docs generation complete'
 }
+<%#endsection%>
 
 task Build {
     Write-BuildHeader 'Build (compile module)'
@@ -349,6 +351,7 @@ task Build {
 
     New-ModuleManifest @ManifestParams
 
+<%#section DocsBuildStep%>
     # Generate MAML help from markdown docs
     $MdDir = Join-Path -Path $script:DocsDir -ChildPath 'commands'
     if ((Test-Path -Path $MdDir) -and (Get-Module -ListAvailable -Name 'platyPS' -ErrorAction SilentlyContinue)) {
@@ -357,6 +360,7 @@ task Build {
         New-ExternalHelp -Path $MdDir -OutputPath $HelpDir -Force | Out-Null
         Write-Build White '  Generated MAML help'
     }
+<%#endsection%>
 
     Write-Build White "  Compiled $($PublicFunctions.Count) public + private functions into .psm1"
     Write-BuildFooter 'Build complete'
@@ -447,5 +451,10 @@ task DevCC {
 }
 
 # Composite tasks
+<%#section DocsComposite%>
 task . Clean, Validate, Format, Lint, Test, Docs, Build, IntegrationTest, Package
+<%#endsection%>
+<%#section NoDocsComposite%>
+task . Clean, Validate, Format, Lint, Test, Build, IntegrationTest, Package
+<%#endsection%>
 task Release Version, ., Publish

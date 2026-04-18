@@ -155,4 +155,54 @@ Describe 'New-AnvilModule' -Tag 'Unit' {
             { New-AnvilModule @Params } | Should -Throw '*already exists*'
         }
     }
+
+    Context 'Custom template via -Template' {
+
+        BeforeAll {
+            $script:CustomTemplatePath = Join-Path $TestDrive 'CustomTemplate'
+            New-Item -Path $script:CustomTemplatePath -ItemType Directory -Force | Out-Null
+            $ManifestContent = @"
+@{
+    Name        = 'Custom'
+    Description = 'A custom test template'
+    Version     = '1.0.0'
+    Parameters  = @(
+        @{ Name = 'Name'; Type = 'string'; Required = `$true; Prompt = 'Project name' }
+        @{ Name = 'Greeting'; Type = 'string'; Prompt = 'Greeting'; Default = 'Hello' }
+    )
+}
+"@
+            Set-Content -Path (Join-Path $script:CustomTemplatePath 'template.psd1') -Value $ManifestContent
+
+            $TokenName = '<%Name%>'
+            $TokenGreeting = '<%Greeting%>'
+            Set-Content -Path (Join-Path $script:CustomTemplatePath 'output.txt.tmpl') -Value "$TokenGreeting from $TokenName"
+        }
+
+        It 'scaffolds from a custom template path' {
+            $Params = @{
+                Name            = 'CustomProject'
+                DestinationPath = $TestDrive
+                Template        = $script:CustomTemplatePath
+                Force           = $true
+            }
+            New-AnvilModule @Params
+            $OutputFile = Join-Path $TestDrive 'CustomProject/output.txt'
+            $OutputFile | Should -Exist
+            $Content = Get-Content $OutputFile -Raw
+            $Content | Should -Match 'Hello from CustomProject'
+        }
+
+        It 'returns path with -PassThru for custom template' {
+            $Params = @{
+                Name            = 'CustomPassThru'
+                DestinationPath = $TestDrive
+                Template        = $script:CustomTemplatePath
+                PassThru        = $true
+                Force           = $true
+            }
+            $Result = New-AnvilModule @Params
+            $Result | Should -Be (Join-Path $TestDrive 'CustomPassThru')
+        }
+    }
 }
