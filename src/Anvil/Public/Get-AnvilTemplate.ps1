@@ -46,7 +46,7 @@ function Get-AnvilTemplate {
             $Manifest = Import-PowerShellDataFile -Path (Join-Path $TemplatePath 'template.psd1') -ErrorAction SilentlyContinue
             if (-not $Manifest) { return }
 
-            $FileCount = (Get-ChildItem -Path $TemplatePath -File -Recurse -ErrorAction SilentlyContinue |
+            $FileCount = (Get-ChildItem -Path $TemplatePath -File -Recurse -Force -ErrorAction SilentlyContinue |
                     Where-Object { $_.Name -ne 'template.psd1' }).Count
 
                 $Layers = @()
@@ -58,7 +58,7 @@ function Get-AnvilTemplate {
                             foreach ($Dir in $LayerDirs) {
                                 $Skip = if ($Layer.ContainsKey('Skip')) { $Layer.Skip } else { $null }
                                 if ($Dir.Name -eq $Skip) { continue }
-                                $LayerFileCount = (Get-ChildItem -Path $Dir.FullName -File -Recurse -ErrorAction SilentlyContinue).Count
+                                $LayerFileCount = (Get-ChildItem -Path $Dir.FullName -File -Recurse -Force -ErrorAction SilentlyContinue).Count
                                 $Layers += [PSCustomObject]@{
                                     Name      = $Dir.Name
                                     PathKey   = $Layer.PathKey
